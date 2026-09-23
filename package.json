@@ -1,0 +1,25 @@
+{
+  "name": "playsync",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Multi-device playback coordination as a concurrency-control lab (MySQL/InnoDB).",
+  "workspaces": ["server", "web"],
+  "scripts": {
+    "db:up": "docker compose up -d --wait",
+    "db:down": "docker compose down",
+    "db:reset": "docker compose down -v && docker compose up -d --wait",
+    "db:shell": "docker compose exec mysql mysql -uroot -proot playsync",
+    "dev": "concurrently -n server,web -c blue,magenta \"npm -w server run dev\" \"npm -w web run dev\"",
+    "dev:server": "npm -w server run dev",
+    "dev:web": "npm -w web run dev",
+    "test": "npm -w server run test",
+    "typecheck": "npm -w server run typecheck && npm -w web run typecheck",
+    "bench": "tsx scripts/bench.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": { "node": ">=20" }
+}
