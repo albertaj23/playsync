@@ -1,6 +1,6 @@
 # PlaySync
 
-Multi-device playback coordination used as a concurrency-control lab on MySQL/InnoDB. The full design is in [`../PLAN.md`](../PLAN.md).
+Multi-device playback coordination used as a concurrency-control lab on MySQL/InnoDB. The full design is in [docs/PLAN.md](docs/PLAN.md); how the build deviates from it, and how to work on it, is in [CLAUDE.md](CLAUDE.md).
 
 Everything runs locally and for free: MySQL 8.4 in Docker, Node 20+, React. There is no authentication. You pick an account by username, because login is out of scope for this project.
 
@@ -90,5 +90,8 @@ Switching the live strategy to NAIVE or TXN_RR (Stats for nerds → Live state) 
 
 ## Docs
 
+- [docs/PLAN.md](docs/PLAN.md): the original specification
+- [CLAUDE.md](CLAUDE.md): project guide for coding agents (status, rules, deviations from the plan, workflow)
+- [docs/implementation/phase-4.md](docs/implementation/phase-4.md), [docs/implementation/phases-5-7.md](docs/implementation/phases-5-7.md): implementation plans for the remaining phases
 - [docs/er.md](docs/er.md): ER/EER model, DEVICE specialization and mapping options
 - [docs/normalization.md](docs/normalization.md): FDs, candidate keys, 3NF/BCNF analysis, the deliberate denormalization
