@@ -7,6 +7,7 @@ import { PlayerControls } from './PlayerControls';
 import { describeMessage } from './deviceMessages';
 import { useAnime } from '../../lib/useAnime';
 import { animate } from 'animejs';
+import { AskSheet } from './AskSheet';
 import { DeviceAvatar, type AvatarMood } from './DeviceAvatar';
 import { celebrate, pop, reduced } from '../../lib/motion';
 
@@ -149,7 +150,15 @@ export function DeviceCard({
           comeOnline={session.comeOnline}
         />
 
-        {session.message && (() => {
+        <AskSheet
+          open={session.message?.kind === 'ask'}
+          title={session.message ? describeMessage(session.message).title : ''}
+          body={session.message ? describeMessage(session.message).body : undefined}
+          busy={session.busy}
+          onConfirm={session.takeOver}
+          onCancel={session.dismiss}
+        />
+        {session.message && session.message.kind !== 'ask' && (() => {
           const m = describeMessage(session.message);
           const bg = m.tone === 'info' ? 'bg-violet-500/10 text-violet-300 border-violet-500/20'
                    : m.tone === 'warn' ? 'bg-amber-500/10  text-amber-300  border-amber-500/20'
@@ -161,16 +170,6 @@ export function DeviceCard({
                 <h4 className="font-semibold text-sm">{m.title}</h4>
                 {m.body && <p className="mt-1 text-sm opacity-80">{m.body}</p>}
               </div>
-              {session.message.kind === 'ask' ? (
-                <div className="mt-4 flex gap-2">
-                  <Button variant="primary" size="sm" onClick={session.takeOver} disabled={session.busy}>
-                    Play here
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={session.dismiss} disabled={session.busy}>
-                    Cancel
-                  </Button>
-                </div>
-              ) : (
                 <button
                   onClick={session.dismiss}
                   className="absolute top-4 right-4 text-current opacity-40 hover:opacity-80 transition-opacity"
@@ -178,7 +177,6 @@ export function DeviceCard({
                 >
                   ✕
                 </button>
-              )}
             </div>
           );
         })()}

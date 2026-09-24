@@ -18,7 +18,7 @@ npm run db:up            # starts MySQL 8.4, applies db/schema.sql + db/seed.sql
 npm run dev              # API on :4000, web UI on :5173 (both bound to the LAN)
 ```
 
-Then open **http://localhost:5173**.
+Then open **http://localhost:5173**. Use the sun/moon button (top right) to switch between light and dark; Cmd/Ctrl+K opens a quick-jump palette.
 
 MySQL is published on host port **3307** (`DB_PORT` in `.env`) so it doesn't collide with a locally installed MySQL on 3306. The same variable drives both `docker-compose.yml` and the server.
 
@@ -100,6 +100,7 @@ Switching the live strategy to NAIVE or TXN_RR (Stats for nerds → Live state) 
 - [docs/PLAN.md](docs/PLAN.md): the original specification
 - [CLAUDE.md](CLAUDE.md): project guide for coding agents (status, rules, deviations from the plan, workflow)
 - [docs/implementation/phase-4.md](docs/implementation/phase-4.md), [docs/implementation/phases-5-7.md](docs/implementation/phases-5-7.md): implementation plans for the remaining phases
+- [docs/ui-voice.md](docs/ui-voice.md): copy, motion and theme rules for the friendly UI
 - [docs/er.md](docs/er.md): ER/EER model, DEVICE specialization and mapping options
 - [docs/normalization.md](docs/normalization.md): FDs, candidate keys, 3NF/BCNF analysis, the deliberate denormalization
 - [docs/experiments.md](docs/experiments.md): research question, method, hypotheses, and the bench-generated results tables; `docs/results/` holds the raw per-trial CSVs

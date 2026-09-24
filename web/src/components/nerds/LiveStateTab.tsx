@@ -3,25 +3,12 @@ import { api, type ErrorBody, type StrategyName } from '../../lib/api';
 import { leaseRemaining, type LiveSnapshot } from '../../lib/socket';
 import { Badge, Card, Dot, Stat, inputCls } from '../ui';
 import { fmtSec } from '../../lib/format';
-import { useAnime } from '../../lib/useAnime';
 
 const STRATEGIES: StrategyName[] = ['PESSIMISTIC', 'OPTIMISTIC', 'SERIALIZABLE', 'CONSTRAINT', 'TXN_RR', 'NAIVE'];
 
 export function LiveStateTab({ snapshot, connected }: { snapshot: LiveSnapshot | null; connected: boolean }) {
   const [, tick] = useState(0);
   const [msg, setMsg] = useState<string | null>(null);
-  const { animate } = useAnime();
-  const [displayVersion, setDisplayVersion] = useState(0);
-
-  useEffect(() => {
-    animate({ value: displayVersion }, {
-      value: snapshot?.stateVersion ?? 0,
-      duration: 600,
-      ease: 'outExpo',
-      round: 1,
-      update: (anim: any) => setDisplayVersion(Number(anim.animations[0].currentValue)),
-    });
-  }, [snapshot?.stateVersion, animate]);
 
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 500);
@@ -39,7 +26,7 @@ export function LiveStateTab({ snapshot, connected }: { snapshot: LiveSnapshot |
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
-        <Stat label="state_version" value={displayVersion} hint="bumped on every change" />
+        <Stat label="state_version" value={snapshot.stateVersion} hint="bumped on every change" />
         <Stat label="active / max_streams" value={`${activeCount} / ${snapshot.maxStreams}`} tone={activeCount <= snapshot.maxStreams ? 'green' : 'red'} />
         <Stat label="conflict_policy" value={snapshot.conflictPolicy} />
         <Stat label="socket" value={connected ? 'connected' : 'down'} tone={connected ? 'green' : 'red'} hint="observer, no device" />

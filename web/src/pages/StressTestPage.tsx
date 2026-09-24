@@ -4,8 +4,13 @@ import { api, type ErrorBody, type LostUpdateResponse, type LostUpdateResult, ty
 import { uuid } from '../lib/uuid';
 import { Badge, Button, Card, Field, Segmented, cx, inputCls } from '../components/ui';
 import { Verdict } from '../components/Verdict';
+import { RaceTrack, type Lane } from '../components/RaceTrack';
 import { Mascot } from '../components/Mascot';
 import { enterUp } from '../lib/motion';
+import { useToast } from '../lib/toast';
+
+const friendlyError = (status: number, msg?: string) =>
+  status === 409 ? 'Another experiment is running. Try again in a moment ⏳' : (msg ?? `Something went wrong (${status})`);
 
 interface Method { name: StrategyName; label: string; idea: string; safe: boolean }
 
@@ -70,12 +75,14 @@ function StreamLimitExperiment() {
   const [result, setResult] = useState<RaceResult | null>(null);
   const [comparison, setComparison] = useState<RaceResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const toast = useToast();
 
   async function runOne(name: StrategyName, batchId?: string): Promise<RaceResult | null> {
     setRunning(name);
     const r = await api.post<RaceResult & ErrorBody>('/lab/race',
       { strategy: name, concurrency: devices, maxStreams: limit, raceDelayMs, accounts, mode: 'NORMAL', batchId });
-    if (!r.ok) { setError(r.body.message ?? `Error ${r.status}`); return null; }
+    if (!r.ok) { const m = friendlyError(r.status, r.body.message); setError(m); toast(m, 'warn'); return null; }
     return r.body;
   }
 
@@ -90,6 +97,7 @@ function StreamLimitExperiment() {
   async function compareAll() {
     setError(null);
     setResult(null);
+    setComparing(true);
     const batchId = uuid();
     const rows: RaceResult[] = [];
     for (const m of METHODS) {
@@ -98,6 +106,7 @@ function StreamLimitExperiment() {
       if (r) { rows.push(r); setComparison([...rows]); }
     }
     setRunning(null);
+    setComparing(false);
   }
 
   const constraintBlocked = method === 'CONSTRAINT' && limit > 1;
@@ -191,25 +200,15 @@ function StreamLimitExperiment() {
           </Card>
         )}
 
-        {comparison.length > 0 && (
+        {(comparison.length > 0 || comparing) && (
           <Card title="All methods, same test" subtitle={`${devices} devices, ${limit} allowed`}>
-            <ul className="divide-y divide-stone-100">
-              {comparison.map((r) => {
-                const cv = verdict(r);
-                return (
-                  <li key={r.strategy} className="flex items-center gap-3 py-3">
-                    <span className="text-lg">{cv.ok ? '✅' : '❌'}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-stone-900">{labelOf(r.strategy)}</div>
-                      <div className="text-xs text-stone-500">
-                        {r.granted} played · {r.rejected} told to wait{r.errors ? ` · ${r.errors} gave up` : ''} · {Math.round(r.wallMs)} ms
-                      </div>
-                    </div>
-                    <Badge tone={cv.ok ? 'green' : 'red'}>{cv.ok ? 'protected' : 'broken'}</Badge>
-                  </li>
-                );
-              })}
-            </ul>
+            <RaceTrack lanes={METHODS.filter((m) => !(m.name === 'CONSTRAINT' && limit > 1)).map((m): Lane => {
+              const r = comparison.find((c) => c.strategy === m.name);
+              if (!r) return { key: m.name, label: m.label, state: running === m.name ? 'running' : 'waiting' };
+              const cv = verdict(r);
+              return { key: m.name, label: m.label, state: 'done', ok: cv.ok, badge: cv.ok ? 'protected' : 'broken',
+                detail: `${r.granted} played · ${r.rejected} told to wait${r.errors ? ` · ${r.errors} gave up` : ''} · ${Math.round(r.wallMs)} ms` };
+            })} />
             <p className="mt-3 text-sm text-stone-500">The safe methods all hold the limit; they differ in cost.</p>
             {comparisonBatch && <SavedLink batchId={comparisonBatch} />}
           </Card>
@@ -264,6 +263,8 @@ function CountingPlaysExperiment() {
   const [result, setResult] = useState<LostUpdateResult | null>(null);
   const [comparison, setComparison] = useState<LostUpdateResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [comparing, setComparing] = useState(false);
+  const toast = useToast();
 
   // /lab/lost-update always runs a batch of trials (default 1 here) and returns { batchId, trials, aggregate };
   // the single result shown here is that one trial.
@@ -271,7 +272,7 @@ function CountingPlaysExperiment() {
     setRunning(variant);
     const r = await api.post<LostUpdateResponse & ErrorBody>('/lab/lost-update',
       { variant, increments: people, raceDelayMs: 20, trials: 1, batchId });
-    if (!r.ok) { setError(r.body.message ?? `Error ${r.status}`); return null; }
+    if (!r.ok) { const m = friendlyError(r.status, r.body.message); setError(m); toast(m, 'warn'); return null; }
     return r.body.trials[0] ?? null;
   }
 
@@ -286,6 +287,7 @@ function CountingPlaysExperiment() {
   async function compareAll() {
     setError(null);
     setResult(null);
+    setComparing(true);
     const batchId = uuid();
     const rows: LostUpdateResult[] = [];
     for (const m of LOST_UPDATE_METHODS) {
@@ -293,6 +295,7 @@ function CountingPlaysExperiment() {
       if (r) { rows.push(r); setComparison([...rows]); }
     }
     setRunning(null);
+    setComparing(false);
   }
 
   const v = result && luVerdict(result);
@@ -362,23 +365,15 @@ function CountingPlaysExperiment() {
           </Card>
         )}
 
-        {comparison.length > 0 && (
+        {(comparison.length > 0 || comparing) && (
           <Card title="All methods, same test" subtitle={`${people} people finishing at once`}>
-            <ul className="divide-y divide-stone-100">
-              {comparison.map((r) => {
-                const cv = luVerdict(r);
-                return (
-                  <li key={r.variant} className="flex items-center gap-3 py-3">
-                    <span className="text-lg">{cv.ok ? '✅' : '❌'}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-medium text-stone-900">{luLabelOf(r.variant)}</div>
-                      <div className="text-xs text-stone-500">counter says {r.finalCount} of {r.succeeded} · {Math.round(r.wallMs)} ms</div>
-                    </div>
-                    <Badge tone={cv.ok ? 'green' : 'red'}>{cv.ok ? 'accurate' : 'lost plays'}</Badge>
-                  </li>
-                );
-              })}
-            </ul>
+            <RaceTrack lanes={LOST_UPDATE_METHODS.map((m): Lane => {
+              const r = comparison.find((c) => c.variant === m.name);
+              if (!r) return { key: m.name, label: m.label, state: running === m.name ? 'running' : 'waiting' };
+              const cv = luVerdict(r);
+              return { key: m.name, label: m.label, state: 'done', ok: cv.ok, badge: cv.ok ? 'accurate' : 'lost plays',
+                detail: `counter says ${r.finalCount} of ${r.succeeded} · ${Math.round(r.wallMs)} ms` };
+            })} />
             <p className="mt-3 text-sm text-stone-500">The safe methods all count exactly right; they differ in speed.</p>
             {comparisonBatch && <SavedLink batchId={comparisonBatch} />}
           </Card>

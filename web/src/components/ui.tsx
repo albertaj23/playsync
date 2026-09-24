@@ -1,4 +1,5 @@
-import React, { type ButtonHTMLAttributes, type ReactNode } from 'react';
+import React, { useEffect, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { countUp } from '../lib/motion';
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
@@ -96,13 +97,20 @@ export function Equalizer({ className }: { className?: string }) {
   );
 }
 
+/** A number that counts up to its value, always ending on the exact figure. */
+export function CountNumber({ value }: { value: number }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => { countUp(ref.current, value); }, [value]);
+  return <span ref={ref}>{value}</span>;
+}
+
 /* ─── Stat ───────────────────────────────────────────────────────────────── */
 export function Stat({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: 'green' | 'red' | 'amber' }) {
   const color = tone === 'green' ? 'text-emerald-400' : tone === 'red' ? 'text-rose-400' : tone === 'amber' ? 'text-amber-400' : 'text-stone-900';
   return (
     <div className="glass-card rounded-xl px-4 py-3">
       <div className="label-caps">{label}</div>
-      <div className={cx('mt-0.5 text-xl font-semibold tabular-nums tracking-tight', color)}>{value}</div>
+      <div className={cx('mt-0.5 text-xl font-semibold tabular-nums tracking-tight', color)}>{typeof value === 'number' ? <CountNumber value={value} /> : value}</div>
       {hint && <div className="mt-0.5 text-xs text-stone-400">{hint}</div>}
     </div>
   );
