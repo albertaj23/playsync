@@ -32,10 +32,11 @@ npm -w web run build     # static bundle in web/dist
 ## Test
 
 ```bash
-npm test                 # server suite against the real Dockerized MySQL, then web unit tests (~6 s)
+npm test                 # server suite against the real Dockerized MySQL, then web unit tests (~45 s)
+npm -w server run test:fast   # everything except the slow Concurrency Lab tests (~6 s)
 ```
 
-The server suite covers the schema and seed, every strategy's semantics, 20-way concurrent races (safe strategies never violate the invariant; NAIVE and TXN_RR do), heartbeat fencing (410 PREEMPTED / EXPIRED, with no lease revival), pause/resume/release, idempotency, fault-injection rollback, real-time pushes (published only after commit; a taken-over device is told immediately), the lease reaper, and the live correctness checks (each one shown failing when its property is broken). The web suite tests the versioned store that discards out-of-order pushes. Tests reset the accounts they use, so they can run while the app is open, but they will end any sessions you have playing on `brij`.
+The server suite covers the schema and seed, every strategy's semantics, 20-way concurrent races (safe strategies never violate the invariant; NAIVE and TXN_RR do), heartbeat fencing (410 PREEMPTED / EXPIRED, with no lease revival), pause/resume/release, idempotency, fault-injection rollback, real-time pushes (published only after commit; a taken-over device is told immediately), the lease reaper, the live correctness checks (each one shown failing when its property is broken), and the **Concurrency Lab** (20 trials × 50-way races per safe strategy, TAKEOVER mode, persistence, guards, the lab lock, and all four lost-update variants). The web suite tests the versioned store that discards out-of-order pushes. Tests reset the accounts they use, so they can run while the app is open, but they will end any sessions you have playing on `brij`, and they'll wait for any other experiment (the UI, the CLI bench) holding the lab lock to finish first.
 
 If the database is ever in a strange state, start from a clean one:
 
@@ -50,8 +51,8 @@ npm run db:reset
 | **Home** `/` | What the app does, in plain language, and where to go next |
 | **My devices** `/devices` | The four `brij` devices, each an independent live client: play, pause/resume, stop, the “Play here instead?” prompt, **Go offline**, and plain-language settings (how many devices may play, what happens when a new one starts) |
 | **Single device** `/device` | One device on its own, for opening on a real phone |
-| **Stress test** `/stress` | Makes N devices press Play at the same instant under a chosen protection method, then gives a verdict: did the limit hold? **Compare all** runs every method |
-| **Stats for nerds** `/nerds` | What the friendly pages hide, in six tabs: **Checks** (six SQL assertions re-run after every change, with history), **Action trace** (every request and response from any tab), **Live state** (sessions, leases, versions, live strategy switch), **Audit log**, **Stress data** (full numbers and charts), **Database** (schema, indexes, foreign keys) |
+| **Stress test** `/stress` | Two experiments, switchable at the top. **Pressing Play together**: N devices press Play at once under a chosen protection method; **Counting plays**: N people finish a song at once and a play counter is (or isn't) updated correctly. Either way: a verdict, and **Compare all** runs every method |
+| **Stats for nerds** `/nerds` | What the friendly pages hide, in seven tabs: **Checks** (six SQL assertions re-run after every change, with history), **Lab** (full-control Concurrency Lab: pick strategies/variants, parameters and trial counts directly, saved to the database), **Action trace** (every request and response from any tab), **Live state** (sessions, leases, versions, live strategy switch), **Audit log**, **Experiment runs** (every trial ever saved to `experiment_run`, filterable by batch/experiment/accounts/delay, with charts built from the database), **Database** (schema, indexes, foreign keys) |
 
 ### Demo script (about 3 minutes)
 
@@ -59,9 +60,10 @@ npm run db:reset
 2. **Zombie device.** Play on MacBook, press **Go offline** on it, take over from iPad, wait ~6 s, then **Back online** on MacBook. It learns the news only now (its late heartbeat is refused) and says the music moved while it was offline.
 3. **Lease expiry.** Play on a device, press Go offline and wait 20 s. The server lets the stream go (the reaper marks it expired within ~2 s of the lease lapsing); Back online says the device was offline too long. The lease is never revived.
 4. **Proof.** Open **Stats for nerds** in a second tab while you do the above. Every click shows up in the Action trace, and the Checks tab re-verifies the database after each one. Use its “Send duplicate request” probe to see idempotency.
-5. **Write skew.** In the Stress test, keep the defaults and press **Compare all**. “No protection” and “Basic grouping” (NAIVE, TXN_RR) let ~30 devices play on a 1-device account; the other four hold the limit. Stats for nerds → Stress data shows what each one paid in retries, deadlocks and latency.
+5. **Write skew.** In the Stress test (Pressing Play together), keep the defaults and press **Compare all**. “No protection” and “Basic grouping” (NAIVE, TXN_RR) let ~30 devices play on a 1-device account; the other four hold the limit. Stats for nerds → Experiment runs shows what each one paid in retries, deadlocks and latency, read straight from `experiment_run`.
+6. **Lost update.** Switch the Stress test to **Counting plays** and press **Compare all**. “Read, then write” loses most of the plays; the other three variants always land on exactly N.
 
-Switching the live strategy to NAIVE or TXN_RR (Stats for nerds → Live state) makes the live app unsafe too. That's intentional.
+Switching the live strategy to NAIVE or TXN_RR (Stats for nerds → Live state) makes the live app unsafe too. That's intentional. Stats for nerds → **Lab** gives full control over both experiments (every strategy/variant, custom concurrency, accounts, trials) for deeper digging, and `npm run bench` runs the whole matrix from the command line and writes `docs/experiments.md` + CSVs in `docs/results/`.
 
 ### On a real phone
 
@@ -79,8 +81,13 @@ Switching the live strategy to NAIVE or TXN_RR (Stats for nerds → Live state) 
 | `npm run db:shell` | Open a `mysql` client inside the container |
 | `npm run dev` | Start the server (tsx watch) and web (Vite) together |
 | `npm test` | Run the server and web test suites |
+| `npm -w server run test:fast` | Server tests, skipping the slow Concurrency Lab tests |
 | `npm run typecheck` | Run `tsc` on both workspaces |
-| `npm run bench` | CLI experiment matrix (Phase 4) |
+| `npm run bench` | Full experiment matrix (~1200 trials, several minutes): writes CSVs to `docs/results/` and updates `docs/experiments.md` |
+| `npm run bench -- --quick` | A fast smoke test of the same pipeline (~1 minute) |
+| `npm run bench -- --trials N` | Override the trial count |
+| `npm run bench -- --only stream\|lost` | Run just one of the two experiments |
+| `npm run bench -- --no-md` | Skip updating `docs/experiments.md` |
 
 ## Troubleshooting
 
@@ -95,3 +102,4 @@ Switching the live strategy to NAIVE or TXN_RR (Stats for nerds → Live state) 
 - [docs/implementation/phase-4.md](docs/implementation/phase-4.md), [docs/implementation/phases-5-7.md](docs/implementation/phases-5-7.md): implementation plans for the remaining phases
 - [docs/er.md](docs/er.md): ER/EER model, DEVICE specialization and mapping options
 - [docs/normalization.md](docs/normalization.md): FDs, candidate keys, 3NF/BCNF analysis, the deliberate denormalization
+- [docs/experiments.md](docs/experiments.md): research question, method, hypotheses, and the bench-generated results tables; `docs/results/` holds the raw per-trial CSVs

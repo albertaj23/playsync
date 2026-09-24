@@ -8,7 +8,7 @@ A DBMS coursework project. A tiny music app where one account has several device
 
 > **Invariant:** for every account, the number of sessions with `status = 'PLAYING'` and `lease_expires_at > NOW(3)` is ≤ `account.max_streams`.
 
-The two-devices-press-Play race is **write skew / a phantom**, not a lost update. Lost update gets its own experiment (the song play counter, Phase 4).
+The two-devices-press-Play race is **write skew / a phantom**, not a lost update. Lost update gets its own experiment (the song play counter).
 
 ## 2. Status
 
@@ -17,9 +17,9 @@ The two-devices-press-Play race is **write skew / a phantom**, not a lost update
 | 0 | Scaffold, Docker MySQL, health endpoint | ✅ done | `main` |
 | 1 | Schema, seed, ER + normalization docs | ✅ done | `main` |
 | 2 | Six strategies, playback service, REST API | ✅ done | `phase-2` |
-| 3 | Real-time sync, lease reaper, friendly UI + Stats for nerds | ✅ done | `phase-3` (current) |
-| 4 | Concurrency Lab: trials, persistence, lost update, bench | **next**. Plan: [docs/implementation/phase-4.md](docs/implementation/phase-4.md) | `phase-4` |
-| 5 | Transaction Stepper | planned: [docs/implementation/phases-5-7.md](docs/implementation/phases-5-7.md) | `phase-5` |
+| 3 | Real-time sync, lease reaper, friendly UI + Stats for nerds | ✅ done | `phase-3` |
+| 4 | Concurrency Lab: trials, persistence, lost update, bench | ✅ done | `phase-4` (current) |
+| 5 | Transaction Stepper | **next**. Plan: [docs/implementation/phases-5-7.md](docs/implementation/phases-5-7.md) | `phase-5` |
 | 6 | Index lab + report docs | planned (same file) | `phase-6` |
 | 7 | Stretch goals, **only if the user asks** | planned (same file) | — |
 
@@ -38,18 +38,21 @@ npm run dev                # server :4000 (tsx watch, auto-restarts on save) + V
 npm test                   # server suite (vitest, real DB, files run sequentially) + web unit tests
 npm run typecheck          # tsc for server and web
 npm -w web run build       # production bundle (a recharts chunk-size warning is expected)
-npm run bench              # CLI experiment matrix (implemented in Phase 4)
+npm -w server run test:fast # server tests, skipping the slow Concurrency Lab tests (~6 s vs ~40 s)
+npm run bench               # full experiment matrix (~1200 trials, several minutes); --quick, --trials N, --only stream|lost, --no-md
 ```
 
-Baseline at the end of Phase 3: **105 server tests pass (2 skipped by design) + 3 web tests**, typecheck clean, build succeeds. Keep it that way: never finish a step with a red suite.
+Baseline at the end of Phase 4: **127 server tests pass (2 skipped by design) + 3 web tests**, typecheck clean, build succeeds. Keep it that way: never finish a step with a red suite.
 
 ## 4. Repository map
 
 ```
 db/schema.sql, db/seed.sql     Loaded only when the Docker volume is created → schema changes need `npm run db:reset`.
 docs/PLAN.md                   Original spec.  docs/er.md, docs/normalization.md: Phase 1 report material.
+docs/experiments.md            Research question, method, hypotheses (H1-H6), bench-generated tables between <!-- bench:start/end -->.
+docs/results/                  Per-trial CSVs written by `npm run bench` (gitignored except the one committed full run).
 docs/implementation/           Phase plans for agents (this handoff).
-scripts/bench.ts               Stub until Phase 4.
+scripts/bench.ts               CLI experiment matrix: runs in-process against the server's lab modules, writes CSV + docs/experiments.md.
 
 server/src/
   config.ts                    zod-parsed env from ../.env (LEASE_MS 15000, HEARTBEAT_MS 5000, REAPER_MS 2000, pools 20/120).
@@ -63,9 +66,15 @@ server/src/
   services/leaseReaper.ts      reapOnce(), startReaper(ms). Skips lab accounts.
   services/checks.ts           Six live SQL assertions per account (GET /api/accounts/:id/checks).
   realtime/                    presence.ts (online set), publisher.ts (publish-after-commit interface), socket.ts (rooms, join, pushes).
-  lab/raceRunner.ts            Single-trial STREAM_LIMIT race (Phase 4 extends it).  lab/invariant.ts: the invariant query.
-  routes/                      health, info (read-only UI endpoints + checks), accounts (state/settings/end-all/hello/admin strategy), playback, lab, http.ts (asyncHandler + error mapping).
-server/test/                   One file per area; helpers.ts has resetAccount(), deviceIds(), expireLease(), count()...
+  lab/labLock.ts                withLabLock(fn): MySQL named lock (GET_LOCK('playsync.lab', 0)) so the UI/bench/tests can't clash on lab accounts. Throws LabBusyError if held.
+  lab/raceRunner.ts            runRace() = one STREAM_LIMIT trial (index/lock managed by the caller). runStreamLimitExperiment() = trials + persistence + aggregate, holds the lab lock.
+  lab/lostUpdate.ts            runLostUpdate() = one trial of a lost-update variant (NAIVE_RMW/ATOMIC/LOCKED/CAS). runLostUpdateExperiment() = trials + persistence.
+  lab/persist.ts               saveRun()/listRuns(): experiment_run insert/read, DECIMAL→number conversion.
+  lab/stats.ts                 percentile/mean/median/round2, shared by both experiment runners.
+  lab/invariant.ts             The invariant query (checkInvariant).
+  routes/                      health, info (read-only UI endpoints + checks), accounts (state/settings/end-all/hello/admin strategy), playback,
+                                lab (/lab/race single-trial, /lab/experiments, /lab/lost-update, /lab/runs), http.ts (asyncHandler + error mapping).
+server/test/                   One file per area; helpers.ts has resetAccount(), deviceIds(), expireLease(), count()...  lab.test.ts is slow (~35s); test:fast excludes it.
 
 web/src/
   lib/api.ts                   Typed fetch wrapper; returns {ok,status,body}, never throws on 4xx; records every non-GET call in the trace.
@@ -75,8 +84,8 @@ web/src/
   lib/useDeviceSession.ts      All device-client behaviour (claim, heartbeats, offline, adoption after reload, session_lost).
   components/ui.tsx            Card, Badge, Button, Dot, Equalizer, Stat, Field, inputCls, Code, Segmented, cx. Use these.
   components/device/           DeviceCard, NowPlaying, PlayerControls, deviceMessages (plain-language messages).
-  components/nerds/            One file per Stats-for-nerds tab.
-  pages/                       HomePage, DevicesPage (/devices), DevicePage (/device?account=&device=), StressTestPage (/stress), NerdsPage (/nerds?tab=...).
+  components/nerds/            One file per Stats-for-nerds tab, including LabTab.tsx (full-control lab) and RunsTab.tsx (reads GET /lab/runs; tab id "runs", accepts legacy "stress").
+  pages/                       HomePage, DevicesPage (/devices), DevicePage (/device?account=&device=), StressTestPage (/stress, two experiments), NerdsPage (/nerds?tab=...).
 ```
 
 ## 5. Rules the code follows (do not break them)
@@ -124,6 +133,13 @@ web/src/
 12. Extra endpoints: `/config`, `/songs`, `/strategies`, `/accounts/lookup`, `/accounts/:id/events`, `/accounts/:id/checks`, `/accounts/:id/end-all`, `/db/overview`, `/lab/race`.
 13. **UI structure differs from PLAN §7.** Instead of `/wall` and `/lab`, there are friendly pages (`/devices` = the device wall, `/device`, `/stress` = friendly race lab) plus **Stats for nerds** for everything technical. `/wall`, `/playground` → `/devices`; `/race` → `/stress`. The full-control Concurrency Lab of PLAN §7 lives in Stats for nerds (Phase 4 adds a "Lab" tab).
 14. Web unit tests exist (vitest in `web/`); `npm test` runs both workspaces.
+15. (Phase 4) `experiment_run` gained `wall_ms`, `batch_id`, `trial`, `source`, `detail` to group the trials of one experiment invocation. `batch_id` is not a key (see `docs/normalization.md` §6).
+16. (Phase 4) A cross-process **MySQL named lock** (`GET_LOCK('playsync.lab', 0)`, `server/src/lab/labLock.ts`) replaces the in-process `running` flag, so the CLI bench, the test suite and the UI can't clash on the shared lab accounts.
+17. (Phase 4) Lost-update `lost` is defined as `succeeded − finalCount` (increments that **reported success** but are missing from the counter), not PLAN §8.2's `N − final`: a CAS worker that exhausts its retries counts as an error, not a lost update.
+18. (Phase 4) The full-control lab (PLAN §7 item 3) lives in Stats for nerds as a **"Lab"** tab; the old "Stress data" tab is renamed **"Experiment runs"** (`?tab=runs`, `?tab=stress` still works) and now reads `GET /api/lab/runs` instead of the browser's local trace.
+19. (Phase 4) `POST /lab/race` (the friendly page's single-trial endpoint) now returns `runId`/`batchId`/`trial` fields too (it's implemented as `runStreamLimitExperiment({..., trials: 1})`); it accepts an optional `batchId` in the body so "Compare all" groups its six calls under one batch.
+20. (Phase 4) The CAS lost-update variant caps retries at 500 attempts and then reports an `error`, not an infinite loop; this is why `lost` is defined via `succeeded − finalCount` rather than `N − final` (see deviation 17).
+21. (Phase 4) The CLI bench prints one progress line per **trial**, but because `runStreamLimitExperiment`/`runLostUpdateExperiment` return only after all trials of one matrix cell finish, all of a cell's lines print together when that cell completes, not truly streamed one at a time. The numbers are per-trial and correct either way.
 
 Record any new deviation you make in this list, and in your phase summary.
 
@@ -144,3 +160,4 @@ Record any new deviation you make in this list, and in your phase summary.
 - SERIALIZABLE and OPTIMISTIC at high contention in TAKEOVER mode **legitimately** exhaust `withRetry`'s 5 retries for some requests (reported as `errors`). That is a finding, not a bug.
 - Changing `LEASE_MS` changes how long the "offline" demos take (lease 15 s + reaper 2 s).
 - JSON columns come back from mysql2 already parsed (objects, not strings).
+- **SERIALIZABLE gets WORSE, not better, when load is spread over more accounts** (16 accounts vs. 1, same total concurrency): in a quick bench run, mean p95 at concurrency 32 went from ~47ms (1 account) to ~359ms (16 accounts), with retries roughly quadrupling. This is a real, reproducible InnoDB effect, not a bug: `SELECT COUNT(*) WHERE account_id = ?` under SERIALIZABLE takes a shared next-key lock on `ix_session_account_status_lease`, and next-key locks extend into the gap toward the *next* distinct key value in the index — so one account's phantom-protection range can abut (and, depending on row distribution, effectively serialize against) a neighboring account's inserts on the same physical index. This is worth citing directly in `docs/concurrency.md` (Phase 6) alongside H6 (index footprint); don't try to "fix" it by changing the query, since demonstrating this exact interaction between locks and index layout is the point.

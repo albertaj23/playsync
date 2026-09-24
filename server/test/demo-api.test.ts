@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { createApp } from '../src/app.js';
 import { closePools } from '../src/db/pool.js';
@@ -49,6 +50,19 @@ describe('POST /lab/race (single-trial preview)', () => {
     const r = await race({ strategy: 'PESSIMISTIC' });
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ granted: 1, rejected: 19, violations: 0, errors: 0 });
+    expect(r.body.runId).toEqual(expect.any(Number));
+    expect(r.body.batchId).toEqual(expect.stringMatching(/^[0-9a-f-]{36}$/));
+  });
+
+  it('groups two calls under one batchId when the caller supplies it', async () => {
+    const batchId = randomUUID();
+    const a = await race({ strategy: 'PESSIMISTIC', batchId });
+    const b = await race({ strategy: 'OPTIMISTIC', batchId });
+    expect(a.body.batchId).toBe(batchId);
+    expect(b.body.batchId).toBe(batchId);
+    const runs = await request(app).get(`/api/lab/runs?batchId=${batchId}`);
+    expect(runs.body).toHaveLength(2);
+    expect(runs.body.map((r: { strategy: string }) => r.strategy).sort()).toEqual(['OPTIMISTIC', 'PESSIMISTIC']);
   });
 
   it('NAIVE: violations under contention', async () => {

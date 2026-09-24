@@ -104,5 +104,15 @@ export function summarize(method: string, path: string, body: Record<string, unk
       ? `stress test ${b.strategy} ×${b.concurrency} → ${res.granted} granted, ${res.violations} violation(s), ${res.deadlocks} deadlock(s), ${res.retries} retr${res.retries === 1 ? 'y' : 'ies'}`
       : `stress test ${b.strategy} → ${status} ${res.message ?? ''}`;
   }
+  if (path === '/lab/experiments') {
+    if (status !== 200) return `experiment ${b.strategy} → ${status} ${res.message ?? ''}`;
+    const agg = (res.aggregate ?? {}) as { trials?: number; trialsWithViolations?: number };
+    return `experiment ${b.strategy} ×${b.concurrency}, ${agg.trials} trials → 0 violations in ${(agg.trials ?? 0) - (agg.trialsWithViolations ?? 0)}/${agg.trials}`;
+  }
+  if (path === '/lab/lost-update') {
+    if (status !== 200) return `lost update ${b.variant} → ${status} ${res.message ?? ''}`;
+    const agg = (res.aggregate ?? {}) as { finalCountMean?: number; lostMean?: number };
+    return `lost update ${b.variant} ×${b.increments} → counter ${agg.finalCountMean}, ${agg.lostMean} lost`;
+  }
   return `${method} ${path} → ${status}`;
 }

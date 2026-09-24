@@ -7,23 +7,27 @@ import { Badge, Dot, cx } from '../components/ui';
 import { AuditTab } from '../components/nerds/AuditTab';
 import { ChecksTab, type CheckRun } from '../components/nerds/ChecksTab';
 import { DatabaseTab } from '../components/nerds/DatabaseTab';
+import { LabTab } from '../components/nerds/LabTab';
 import { LiveStateTab } from '../components/nerds/LiveStateTab';
-import { StressTab } from '../components/nerds/StressTab';
+import { RunsTab } from '../components/nerds/RunsTab';
 import { TraceTab } from '../components/nerds/TraceTab';
 
 const TABS = [
   { id: 'checks', label: 'Checks' },
+  { id: 'lab', label: 'Lab' },
   { id: 'trace', label: 'Action trace' },
   { id: 'live', label: 'Live state' },
   { id: 'audit', label: 'Audit log' },
-  { id: 'stress', label: 'Stress data' },
+  { id: 'runs', label: 'Experiment runs' },
   { id: 'database', label: 'Database' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
 export default function NerdsPage() {
   const [params, setParams] = useSearchParams();
-  const tab = (TABS.find((t) => t.id === params.get('tab'))?.id ?? 'checks') as TabId;
+  const rawTab = params.get('tab');
+  // 'stress' was this tab's id before it was renamed to 'runs' and started reading experiment_run.
+  const tab = (TABS.find((t) => t.id === rawTab)?.id ?? (rawTab === 'stress' ? 'runs' : 'checks')) as TabId;
   const username = params.get('account') ?? 'brij';
 
   const [accountId, setAccountId] = useState<number | null>(null);
@@ -104,10 +108,11 @@ export default function NerdsPage() {
       </div>
 
       {tab === 'checks' && <ChecksTab checks={checks} history={history} snapshot={snapshot} onRunNow={refresh} />}
+      {tab === 'lab' && <LabTab />}
       {tab === 'trace' && <TraceTab trace={trace} snapshot={snapshot} />}
       {tab === 'live' && <LiveStateTab snapshot={snapshot} connected={connected} />}
       {tab === 'audit' && <AuditTab events={events} />}
-      {tab === 'stress' && <StressTab trace={trace} />}
+      {tab === 'runs' && <RunsTab trace={trace} />}
       {tab === 'database' && <DatabaseTab />}
     </div>
   );

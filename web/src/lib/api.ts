@@ -74,10 +74,50 @@ export interface ChecksResponse { accountId: number; allPassed: boolean; checks:
 
 export interface RaceParams {
   strategy: StrategyName; concurrency: number; accounts: number; maxStreams: number;
-  raceDelayMs: number; mode: 'NORMAL' | 'TAKEOVER'; isolation?: string;
+  raceDelayMs: number; mode: 'NORMAL' | 'TAKEOVER'; isolation?: string; batchId?: string;
 }
 export interface RaceResult extends RaceParams {
   isolationUsed: string; granted: number; rejected: number; errors: number;
   retries: number; deadlocks: number; lockTimeouts: number; violations: number;
   p50Ms: number; p95Ms: number; wallMs: number; throughputRps: number; errorSamples: string[];
+  runId: number; batchId: string; trial: number;
+}
+
+// -------------------------------------------------------------- Phase 4: Concurrency Lab
+
+export interface ExperimentRequest {
+  strategy: StrategyName; isolation?: string; concurrency: number; accounts: number; maxStreams: number;
+  raceDelayMs: number; mode: 'NORMAL' | 'TAKEOVER'; trials: number; batchId?: string;
+}
+export type TrialResult = RaceResult;
+export interface Aggregate {
+  strategy: StrategyName; isolationUsed: string; trials: number;
+  violationsTotal: number; trialsWithViolations: number; violationsMean: number; violationsMax: number;
+  grantedMean: number; retriesMean: number; deadlocksMean: number; lockTimeoutsTotal: number; errorsTotal: number;
+  p50Median: number; p95Median: number; throughputMean: number;
+}
+export interface ExperimentResponse { batchId: string; trials: TrialResult[]; aggregate: Aggregate }
+
+export type LostUpdateVariant = 'NAIVE_RMW' | 'ATOMIC' | 'LOCKED' | 'CAS';
+export interface LostUpdateRequest {
+  variant: LostUpdateVariant; increments: number; raceDelayMs: number; trials: number; batchId?: string;
+}
+export interface LostUpdateResult extends LostUpdateRequest {
+  isolationUsed: string; succeeded: number; errors: number; retries: number; deadlocks: number;
+  finalCount: number; lost: number; p50Ms: number; p95Ms: number; wallMs: number; throughputRps: number;
+  runId: number; batchId: string; trial: number;
+}
+export interface LostUpdateAggregate {
+  variant: LostUpdateVariant; isolationUsed: string; trials: number;
+  finalCountMean: number; lostTotal: number; trialsWithLoss: number; lostMean: number;
+  retriesMean: number; errorsTotal: number; p50Median: number; p95Median: number; throughputMean: number;
+}
+export interface LostUpdateResponse { batchId: string; trials: LostUpdateResult[]; aggregate: LostUpdateAggregate }
+
+export interface ExperimentRun {
+  runId: number; experiment: 'STREAM_LIMIT' | 'LOST_UPDATE'; strategy: string; isolationLevel: string;
+  mode: 'NORMAL' | 'TAKEOVER'; concurrency: number; accounts: number; maxStreams: number; raceDelayMs: number;
+  granted: number; rejected: number; retries: number; deadlocks: number; lockTimeouts: number;
+  errors: number; violations: number; p50Ms: number; p95Ms: number; throughputRps: number; wallMs: number;
+  batchId: string | null; trial: number; source: 'UI' | 'API' | 'BENCH' | 'TEST'; detail: unknown; createdAt: string;
 }

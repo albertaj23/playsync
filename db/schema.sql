@@ -97,5 +97,14 @@ CREATE TABLE experiment_run (
   p50_ms          DECIMAL(10,2) NOT NULL,
   p95_ms          DECIMAL(10,2) NOT NULL,
   throughput_rps  DECIMAL(10,2) NOT NULL,
-  created_at      DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+  wall_ms         DECIMAL(10,2) NOT NULL DEFAULT 0,
+  batch_id        CHAR(36)      NULL,      -- groups the trials of one "Run"/"Compare all"/bench invocation
+  trial           SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+  source          ENUM('UI','API','BENCH','TEST') NOT NULL DEFAULT 'API',
+  detail          JSON          NULL,      -- errorSamples, lost-update finalCount, etc.
+  created_at      DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  INDEX ix_run_batch (batch_id),
+  INDEX ix_run_experiment_time (experiment, created_at)
 ) ENGINE=InnoDB;
+-- (batch_id, strategy, trial) is unique in practice (one writer per batch) but not declared:
+-- see docs/normalization.md for why this stays BCNF without that as a candidate key.

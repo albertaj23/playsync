@@ -127,6 +127,8 @@ CONSTRAINT fk_session_device_account FOREIGN KEY (device_id, account_id)
 
 **No hidden FDs:** `strategy ↛ isolation_level`, because the lab lets you run `TXN_RR` at READ COMMITTED as well as REPEATABLE READ. The metrics (`granted`, `violations`, `p95_ms`, …) are measured, not computed from other columns in the row.
 
+**`batch_id` (Phase 4) is not a key either.** It groups the trials of one experiment invocation (one "Run" click, one "Compare all", one bench run), so many rows legitimately share a value, and it's nullable for rows written before batching existed. `(batch_id, strategy, trial)` happens to be unique in the current data, because each batch is produced by a single writer that numbers its trials sequentially, but that uniqueness isn't enforced by a constraint and isn't declared as a candidate key: nothing in the schema stops a bug (or a future concurrent writer) from reusing a `(batch_id, trial)` pair. Treat it as an application-level grouping tag, not a key.
+
 **Normal form: BCNF.**
 
 ## 7. Summary
