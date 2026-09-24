@@ -6,14 +6,19 @@ import { writeEvent } from '../strategies/common.js';
 import { setUniqueIndex } from '../strategies/constraint.js';
 import { executeClaim, strategies, type ClaimResult, type StrategyName } from '../strategies/index.js';
 import type { ClaimMode, Holder } from '../strategies/types.js';
+import { isOnline } from '../realtime/presence.js';
+import { publish } from '../realtime/publisher.js';
 import { bumpVersion, readSnapshot, type Snapshot } from './accountState.js';
+
+// Every function below that changes state finishes its transaction BEFORE calling publish():
+// clients are only ever told about committed state.
 
 export type ConflictPolicy = 'REJECT' | 'TAKEOVER' | 'ASK';
 export type LostReason = 'PREEMPTED' | 'EXPIRED' | 'ENDED' | 'PAUSED' | 'NOT_FOUND';
 
 /** A command about a session the device no longer owns. Maps to HTTP 410; the client must stop. */
 export class SessionLostError extends Error {
-  constructor(readonly reason: LostReason) {
+  constructor(readonly reason: LostReason, readonly byDeviceName?: string) {
     super(`session lost: ${reason}`);
     this.name = 'SessionLostError';
   }
@@ -60,19 +65,20 @@ export async function setLiveStrategy(name: StrategyName): Promise<void> {
     await setUniqueIndex(conn, strategy.needsUniqueIndex);
   });
   liveStrategy = name;
+  publish().strategyChanged();
 }
 
 // ------------------------------------------------------------------ snapshot & settings
 
 export function getSnapshot(accountId: number): Promise<Snapshot | null> {
-  return withConn((conn) => readSnapshot(conn, accountId, liveStrategy));
+  return withConn((conn) => readSnapshot(conn, accountId, liveStrategy, isOnline));
 }
 
 export async function updateSettings(accountId: number, maxStreams: number, conflictPolicy: ConflictPolicy) {
   if (maxStreams > 1 && !strategies[liveStrategy].supportsMaxStreamsAbove1) {
     throw new ServiceError(400, 'MAX_STREAMS_UNSUPPORTED', `${liveStrategy} only supports max_streams = 1`);
   }
-  return withConn((conn) => withTx(conn, 'READ COMMITTED', async () => {
+  const result = await withConn((conn) => withTx(conn, 'READ COMMITTED', async () => {
     const [acct] = await conn.query<RowDataPacket[]>(
       'SELECT account_id FROM account WHERE account_id = ? FOR UPDATE', [accountId]);
     if (acct.length === 0) throw new ServiceError(404, 'NOT_FOUND', 'account not found');
@@ -89,6 +95,8 @@ export async function updateSettings(accountId: number, maxStreams: number, conf
       [maxStreams, conflictPolicy, accountId]);
     return { accountId, maxStreams, conflictPolicy, stateVersion: await bumpVersion(conn, accountId) };
   }));
+  publish().accountChanged(accountId);
+  return result;
 }
 
 export async function deviceHello(deviceId: number) {
@@ -126,7 +134,7 @@ export type ClaimResponse =
 export async function claim(req: ClaimRequest): Promise<ClaimResponse> {
   return withConn(async (conn) => {
     const [rows] = await conn.query<RowDataPacket[]>(
-      `SELECT a.account_id, a.conflict_policy, a.max_streams FROM device d
+      `SELECT a.account_id, a.conflict_policy, a.max_streams, d.device_name FROM device d
        JOIN account a ON a.account_id = d.account_id WHERE d.device_id = ?`, [req.deviceId]);
     const acct = rows[0];
     if (!acct) throw new ServiceError(404, 'NOT_FOUND', 'device not found');
@@ -143,7 +151,18 @@ export async function claim(req: ClaimRequest): Promise<ClaimResponse> {
       clientRequestId: req.clientRequestId, positionMs: req.positionMs,
     }, newStats());
 
-    if (result.outcome === 'GRANTED') return { ...result, accountId: acct.account_id, strategy: strategyName };
+    // executeClaim has committed by now. A rejection changed nothing, so there is nothing to push.
+    if (result.outcome === 'GRANTED') {
+      publish().accountChanged(acct.account_id);
+      if (result.preempted.length > 0) {
+        const [victims] = await conn.query<RowDataPacket[]>(
+          'SELECT session_id, device_id FROM playback_session WHERE session_id IN (?)', [result.preempted]);
+        for (const v of victims) {
+          publish().sessionLost(v.device_id, { sessionId: Number(v.session_id), reason: 'PREEMPTED', byDeviceName: acct.device_name });
+        }
+      }
+      return { ...result, accountId: acct.account_id, strategy: strategyName };
+    }
     return { outcome: 'REJECTED', code: 'LIMIT_REACHED', accountId: acct.account_id,
       stateVersion: result.stateVersion, holders: result.holders, policy, canTakeOver: policy === 'ASK' };
   });
@@ -158,9 +177,21 @@ async function lostReason(conn: PoolConnection, sessionId: number, deviceId: num
      FROM playback_session s JOIN account a ON a.account_id = s.account_id
      WHERE s.session_id = ? AND s.device_id = ?`, [sessionId, deviceId]);
   const r = rows[0];
-  if (!r) return { reason: 'NOT_FOUND' as const, accountId: null, stateVersion: 0 };
+  if (!r) return { reason: 'NOT_FOUND' as const, accountId: null, stateVersion: 0, byDeviceName: undefined };
   const reason: LostReason = r.status === 'PLAYING' ? 'EXPIRED' : r.status;
-  return { reason, accountId: r.account_id as number, stateVersion: Number(r.state_version) };
+  
+  let byDeviceName: string | undefined;
+  if (reason === 'PREEMPTED') {
+    const [events] = await conn.query<RowDataPacket[]>(
+      `SELECT d.device_name 
+       FROM playback_event e JOIN device d ON e.detail->>'$.byDeviceId' = d.device_id
+       WHERE e.session_id = ? AND e.event_type = 'PREEMPTED'`, [sessionId]);
+    if (events[0]) {
+      byDeviceName = events[0].device_name;
+    }
+  }
+
+  return { reason, accountId: r.account_id as number, stateVersion: Number(r.state_version), byDeviceName };
 }
 
 /**
@@ -178,16 +209,19 @@ export async function heartbeat(sessionId: number, deviceId: number, positionMs:
       [config.LEASE_MS, positionMs, sessionId, deviceId]);
     if (res.affectedRows === 1) {
       const [rows] = await conn.query<RowDataPacket[]>(
-        `SELECT TIMESTAMPDIFF(MICROSECOND, NOW(3), lease_expires_at) DIV 1000 AS ms
+        `SELECT account_id, TIMESTAMPDIFF(MICROSECOND, NOW(3), lease_expires_at) DIV 1000 AS ms
          FROM playback_session WHERE session_id = ?`, [sessionId]);
+      // No version bump, but watchers' lease countdowns and positions are refreshed.
+      publish().accountChanged(rows[0]!.account_id);
       return { leaseRemainingMs: Number(rows[0]!.ms) };
     }
     const lost = await lostReason(conn, sessionId, deviceId);
     if (lost.accountId !== null) {
       await writeEvent(conn, { accountId: lost.accountId, deviceId, sessionId, type: 'HEARTBEAT_REJECTED',
         stateVersion: lost.stateVersion, detail: { reason: lost.reason, positionMs } });
+      publish().accountChanged(lost.accountId);   // so the audit log shows the rejection
     }
-    throw new SessionLostError(lost.reason);
+    throw new SessionLostError(lost.reason, lost.byDeviceName);
   });
 }
 
@@ -205,7 +239,7 @@ async function endOrPause(sessionId: number, deviceId: number, kind: 'PAUSED' | 
     if (!owner[0]) throw new SessionLostError('NOT_FOUND');
     const accountId = owner[0].account_id as number;
 
-    return withTx(conn, 'READ COMMITTED', async () => {
+    const result = await withTx(conn, 'READ COMMITTED', async () => {
       await conn.query('SELECT account_id FROM account WHERE account_id = ? FOR UPDATE', [accountId]);
       const [res] = kind === 'PAUSED'
         ? await conn.query<ResultSetHeader>(
@@ -217,12 +251,17 @@ async function endOrPause(sessionId: number, deviceId: number, kind: 'PAUSED' | 
            WHERE session_id = ? AND device_id = ?
              AND (status = 'PAUSED' OR (status = 'PLAYING' AND lease_expires_at > NOW(3)))`,
           [positionMs ?? null, sessionId, deviceId]);
-      if (res.affectedRows === 0) throw new SessionLostError((await lostReason(conn, sessionId, deviceId)).reason);
+      if (res.affectedRows === 0) {
+        const lost = await lostReason(conn, sessionId, deviceId);
+        throw new SessionLostError(lost.reason, lost.byDeviceName);
+      }
       const stateVersion = await bumpVersion(conn, accountId);
       await writeEvent(conn, { accountId, deviceId, sessionId, type: kind, stateVersion,
         detail: positionMs === undefined ? undefined : { positionMs } });
       return { accountId, sessionId, stateVersion };
     });
+    publish().accountChanged(accountId);
+    return result;
   });
 }
 
@@ -236,7 +275,8 @@ export const release = (sessionId: number, deviceId: number, positionMs?: number
  * Same shape as release: account lock first, then sessions, version bump, events.
  */
 export async function endAll(accountId: number) {
-  return withConn((conn) => withTx(conn, 'READ COMMITTED', async () => {
+  const ended: { sessionId: number; deviceId: number }[] = [];
+  const result = await withConn((conn) => withTx(conn, 'READ COMMITTED', async () => {
     const [acct] = await conn.query<RowDataPacket[]>(
       'SELECT account_id FROM account WHERE account_id = ? FOR UPDATE', [accountId]);
     if (acct.length === 0) throw new ServiceError(404, 'NOT_FOUND', 'account not found');
@@ -251,7 +291,13 @@ export async function endAll(accountId: number) {
     for (const r of rows) {
       await writeEvent(conn, { accountId, deviceId: r.device_id, sessionId: Number(r.session_id),
         type: 'RELEASED', stateVersion, detail: { by: 'end-all' } });
+      ended.push({ sessionId: Number(r.session_id), deviceId: r.device_id });
     }
     return { ended: rows.length, stateVersion };
   }));
+  if (result.ended > 0) {
+    publish().accountChanged(accountId);
+    for (const e of ended) publish().sessionLost(e.deviceId, { sessionId: e.sessionId, reason: 'ENDED' });
+  }
+  return result;
 }

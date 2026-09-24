@@ -4,6 +4,7 @@ import type { RowDataPacket } from 'mysql2/promise';
 import { z } from 'zod';
 import { config } from '../config.js';
 import { appPool } from '../db/pool.js';
+import { runChecks } from '../services/checks.js';
 import { getLiveStrategy, ServiceError } from '../services/playback.js';
 import { strategies } from '../strategies/index.js';
 import { asyncHandler } from './http.js';
@@ -47,6 +48,12 @@ infoRouter.get('/accounts/:id/events', asyncHandler(async (req, res) => {
      FROM playback_event e LEFT JOIN device d ON d.device_id = e.device_id
      WHERE e.account_id = ? ORDER BY e.event_id DESC LIMIT ?`, [id, limit]);
   res.json(rows.map((r) => ({ ...r, at: String(r.at).slice(0, 12) })));
+}));
+
+infoRouter.get('/accounts/:id/checks', asyncHandler(async (req, res) => {
+  const id = z.coerce.number().int().positive().parse(req.params.id);
+  const checks = await runChecks(id);
+  res.json({ accountId: id, allPassed: checks.every((c) => c.passed), checks });
 }));
 
 infoRouter.get('/db/overview', asyncHandler(async (_req, res) => {

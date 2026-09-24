@@ -12,7 +12,10 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof ZodError) {
     res.status(400).json({ code: 'BAD_REQUEST', issues: err.issues });
   } else if (err instanceof SessionLostError) {
-    res.status(410).json({ code: 'SESSION_LOST', reason: err.reason });
+    res.status(410).json({
+      code: 'SESSION_LOST', reason: err.reason,
+      ...(err.byDeviceName ? { byDeviceName: err.byDeviceName } : {}),
+    });
   } else if (err instanceof ServiceError) {
     res.status(err.status).json({ code: err.code, message: err.message, ...err.extra });
   } else if (isFkViolation(err)) {

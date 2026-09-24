@@ -5,12 +5,18 @@
   --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
 }
 
-html { color-scheme: dark; }
+html { color-scheme: light; }
 body {
-  @apply bg-zinc-950 text-zinc-200 antialiased;
-  background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgb(99 102 241 / 0.12), transparent);
-  background-attachment: fixed;
+  @apply bg-stone-50 text-stone-800 antialiased;
 }
 
-@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgb(52 211 153 / 0.5); } 100% { box-shadow: 0 0 0 8px rgb(52 211 153 / 0); } }
-.pulse-ring { animation: pulse-ring 1.6s ease-out infinite; }
+@keyframes eq {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.eq-bar { transform-origin: bottom; animation: eq 0.9s ease-in-out infinite; }
+.eq-bar:nth-child(2) { animation-delay: -0.3s; }
+.eq-bar:nth-child(3) { animation-delay: -0.6s; }
+
+@keyframes pop-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.pop-in { animation: pop-in 0.25s ease-out; }

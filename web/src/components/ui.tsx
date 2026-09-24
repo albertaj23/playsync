@@ -2,71 +2,86 @@ import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 export const cx = (...c: (string | false | null | undefined)[]) => c.filter(Boolean).join(' ');
 
-export function Card({ children, className, title, action, subtitle }: {
-  children: ReactNode; className?: string; title?: ReactNode; subtitle?: ReactNode; action?: ReactNode;
+export function Card({ children, className, title, subtitle, action, padded = true }: {
+  children: ReactNode; className?: string; title?: ReactNode; subtitle?: ReactNode; action?: ReactNode; padded?: boolean;
 }) {
   return (
-    <section className={cx('rounded-xl border border-zinc-800/80 bg-zinc-900/60 backdrop-blur-sm', className)}>
+    <section className={cx('rounded-2xl border border-stone-200 bg-white shadow-sm shadow-stone-200/50', className)}>
       {(title || action) && (
-        <header className="flex items-start justify-between gap-4 border-b border-zinc-800/80 px-5 py-3.5">
+        <header className="flex items-start justify-between gap-4 border-b border-stone-100 px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold text-zinc-100">{title}</h2>
-            {subtitle && <p className="mt-0.5 text-xs text-zinc-500">{subtitle}</p>}
+            <h2 className="font-semibold text-stone-900">{title}</h2>
+            {subtitle && <p className="mt-0.5 text-sm text-stone-500">{subtitle}</p>}
           </div>
           {action}
         </header>
       )}
-      <div className="p-5">{children}</div>
+      <div className={padded ? 'p-5' : ''}>{children}</div>
     </section>
   );
 }
 
 const tones = {
-  zinc: 'bg-zinc-800 text-zinc-300 ring-zinc-700',
-  green: 'bg-emerald-500/10 text-emerald-300 ring-emerald-500/30',
-  amber: 'bg-amber-500/10 text-amber-300 ring-amber-500/30',
-  red: 'bg-rose-500/10 text-rose-300 ring-rose-500/30',
-  indigo: 'bg-indigo-500/10 text-indigo-300 ring-indigo-500/30',
-  sky: 'bg-sky-500/10 text-sky-300 ring-sky-500/30',
+  stone: 'bg-stone-100 text-stone-600 ring-stone-200',
+  green: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  amber: 'bg-amber-50 text-amber-700 ring-amber-200',
+  red: 'bg-rose-50 text-rose-700 ring-rose-200',
+  violet: 'bg-violet-50 text-violet-700 ring-violet-200',
+  sky: 'bg-sky-50 text-sky-700 ring-sky-200',
 } as const;
 export type Tone = keyof typeof tones;
 
-export function Badge({ children, tone = 'zinc', className }: { children: ReactNode; tone?: Tone; className?: string }) {
+export function Badge({ children, tone = 'stone', className }: { children: ReactNode; tone?: Tone; className?: string }) {
   return (
-    <span className={cx('inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium ring-1 ring-inset', tones[tone], className)}>
+    <span className={cx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', tones[tone], className)}>
       {children}
     </span>
   );
 }
 
 const variants = {
-  primary: 'bg-indigo-500 text-white hover:bg-indigo-400 disabled:bg-indigo-500/40',
-  secondary: 'bg-zinc-800 text-zinc-200 ring-1 ring-inset ring-zinc-700 hover:bg-zinc-700 disabled:opacity-40',
-  danger: 'bg-rose-500/15 text-rose-300 ring-1 ring-inset ring-rose-500/30 hover:bg-rose-500/25 disabled:opacity-40',
-  ghost: 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 disabled:opacity-40',
+  primary: 'bg-violet-600 text-white shadow-sm hover:bg-violet-500 disabled:bg-violet-300',
+  play: 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-500 disabled:bg-emerald-300',
+  secondary: 'bg-white text-stone-700 ring-1 ring-inset ring-stone-300 hover:bg-stone-50 disabled:opacity-50',
+  danger: 'bg-white text-rose-600 ring-1 ring-inset ring-rose-200 hover:bg-rose-50 disabled:opacity-50',
+  ghost: 'text-stone-500 hover:bg-stone-100 hover:text-stone-800 disabled:opacity-50',
 } as const;
 
-export function Button({ variant = 'secondary', className, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: keyof typeof variants }) {
+export function Button({ variant = 'secondary', size = 'md', className, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: keyof typeof variants; size?: 'sm' | 'md' | 'lg';
+}) {
+  const sizes = { sm: 'px-2.5 py-1 text-xs', md: 'px-3.5 py-2 text-sm', lg: 'px-5 py-2.5 text-base' };
   return (
     <button
       {...rest}
-      className={cx('inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed', variants[variant], className)}
+      className={cx('inline-flex items-center justify-center gap-1.5 rounded-xl font-medium transition-colors disabled:cursor-not-allowed', sizes[size], variants[variant], className)}
     />
   );
 }
 
-export function Dot({ tone, pulse }: { tone: 'green' | 'amber' | 'red' | 'zinc'; pulse?: boolean }) {
-  const color = { green: 'bg-emerald-400', amber: 'bg-amber-400', red: 'bg-rose-400', zinc: 'bg-zinc-600' }[tone];
-  return <span className={cx('inline-block h-2 w-2 rounded-full', color, pulse && 'pulse-ring')} />;
+export function Dot({ tone }: { tone: 'green' | 'amber' | 'red' | 'stone' }) {
+  const color = { green: 'bg-emerald-500', amber: 'bg-amber-500', red: 'bg-rose-500', stone: 'bg-stone-300' }[tone];
+  return <span className={cx('inline-block h-2 w-2 shrink-0 rounded-full', color)} />;
+}
+
+/** Animated equalizer bars shown while music is playing. */
+export function Equalizer({ className }: { className?: string }) {
+  return (
+    <span className={cx('inline-flex h-3.5 items-end gap-0.5', className)} aria-hidden>
+      <span className="eq-bar h-full w-1 rounded-sm bg-current" />
+      <span className="eq-bar h-full w-1 rounded-sm bg-current" />
+      <span className="eq-bar h-full w-1 rounded-sm bg-current" />
+    </span>
+  );
 }
 
 export function Stat({ label, value, hint, tone }: { label: string; value: ReactNode; hint?: ReactNode; tone?: 'green' | 'red' | 'amber' }) {
-  const color = tone === 'green' ? 'text-emerald-300' : tone === 'red' ? 'text-rose-300' : tone === 'amber' ? 'text-amber-300' : 'text-zinc-100';
+  const color = tone === 'green' ? 'text-emerald-600' : tone === 'red' ? 'text-rose-600' : tone === 'amber' ? 'text-amber-600' : 'text-stone-900';
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-950/40 px-4 py-3">
-      <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">{label}</div>
-      <div className={cx('mt-1 text-xl font-semibold tabular-nums', color)}>{value}</div>
-      {hint && <div className="mt-0.5 text-xs text-zinc-500">{hint}</div>}
+    <div className="rounded-xl border border-stone-200 bg-stone-50/60 px-4 py-3">
+      <div className="text-xs font-medium text-stone-500">{label}</div>
+      <div className={cx('mt-0.5 text-xl font-semibold tabular-nums', color)}>{value}</div>
+      {hint && <div className="mt-0.5 text-xs text-stone-500">{hint}</div>}
     </div>
   );
 }
@@ -74,16 +89,38 @@ export function Stat({ label, value, hint, tone }: { label: string; value: React
 export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium text-zinc-400">{label}</span>
+      <span className="mb-1 block text-sm font-medium text-stone-700">{label}</span>
       {children}
-      {hint && <span className="mt-1 block text-[11px] text-zinc-500">{hint}</span>}
+      {hint && <span className="mt-1 block text-xs text-stone-500">{hint}</span>}
     </label>
   );
 }
 
 export const inputCls =
-  'w-full rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-sm text-zinc-100 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/20';
+  'w-full rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm text-stone-800 outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 disabled:bg-stone-50';
 
 export function Code({ children }: { children: ReactNode }) {
-  return <code className="rounded bg-zinc-800/80 px-1.5 py-0.5 font-mono text-[12px] text-zinc-200">{children}</code>;
+  return <code className="rounded-md bg-stone-100 px-1.5 py-0.5 font-mono text-[12px] text-stone-700">{children}</code>;
+}
+
+/** Segmented control for a small set of choices. */
+export function Segmented<T extends string | number>({ value, options, onChange, disabled }: {
+  value: T; options: { value: T; label: ReactNode; hint?: string }[]; onChange: (v: T) => void; disabled?: boolean;
+}) {
+  return (
+    <div className="inline-flex flex-wrap gap-1 rounded-xl bg-stone-100 p-1">
+      {options.map((o) => (
+        <button
+          key={String(o.value)}
+          title={o.hint}
+          disabled={disabled}
+          onClick={() => onChange(o.value)}
+          className={cx('rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed',
+            value === o.value ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800')}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
 }

@@ -1,5 +1,4 @@
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
-import { config } from '../config.js';
 
 /**
  * Every committed state change bumps account.state_version (PLAN.md §2 item 11).
@@ -34,7 +33,9 @@ export interface Snapshot {
  * consistent snapshot, so stateVersion always matches the sessions list it is sent with.
  * Returns null if the account does not exist.
  */
-export async function readSnapshot(conn: PoolConnection, accountId: number, strategy: string): Promise<Snapshot | null> {
+export async function readSnapshot(
+  conn: PoolConnection, accountId: number, strategy: string, isOnline: (deviceId: number) => boolean,
+): Promise<Snapshot | null> {
   await conn.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
   await conn.query('START TRANSACTION WITH CONSISTENT SNAPSHOT, READ ONLY');
   try {
@@ -44,11 +45,8 @@ export async function readSnapshot(conn: PoolConnection, accountId: number, stra
     );
     if (acct.length === 0) return null;
     const [devices] = await conn.query<RowDataPacket[]>(
-      // "online" = seen within one lease period. Phase 3 replaces this with live socket presence.
-      `SELECT device_id, device_name, device_type,
-              COALESCE(last_seen_at > NOW(3) - INTERVAL (? * 1000) MICROSECOND, FALSE) AS online
-       FROM device WHERE account_id = ? ORDER BY device_id`,
-      [config.LEASE_MS, accountId],
+      'SELECT device_id, device_name, device_type FROM device WHERE account_id = ? ORDER BY device_id',
+      [accountId],
     );
     // Active = PLAYING with an unexpired lease; PAUSED sessions are shown but hold no stream slot.
     // leaseRemainingMs is computed by the DB clock so client clock skew never matters.
@@ -72,7 +70,7 @@ export async function readSnapshot(conn: PoolConnection, accountId: number, stra
       conflictPolicy: a.conflict_policy,
       strategy,
       devices: devices.map((d) => ({
-        deviceId: d.device_id, deviceName: d.device_name, deviceType: d.device_type, online: Boolean(d.online),
+        deviceId: d.device_id, deviceName: d.device_name, deviceType: d.device_type, online: isOnline(d.device_id),
       })),
       sessions: sessions.map((s) => ({
         sessionId: Number(s.session_id), deviceId: s.device_id, deviceName: s.device_name,

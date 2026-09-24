@@ -80,7 +80,7 @@ describe('heartbeats and fencing', () => {
     await claim(iphone, { mode: 'TAKEOVER' });
     const hb = await heartbeat(a.body.sessionId, mac);
     expect(hb.status).toBe(410);
-    expect(hb.body).toEqual({ code: 'SESSION_LOST', reason: 'PREEMPTED' });
+    expect(hb.body).toEqual({ code: 'SESSION_LOST', reason: 'PREEMPTED', byDeviceName: 'iPhone' });
     expect(await count(
       `SELECT COUNT(*) FROM playback_event WHERE session_id = ? AND event_type = 'HEARTBEAT_REJECTED'`,
       [a.body.sessionId])).toBe(1);
@@ -92,6 +92,7 @@ describe('heartbeats and fencing', () => {
     const hb = await heartbeat(a.body.sessionId, mac);
     expect(hb.status).toBe(410);
     expect(hb.body.reason).toBe('EXPIRED');
+    expect(hb.body.byDeviceName).toBeUndefined();
     expect((await sessionRow(a.body.sessionId))!.live).toBe(0);
     // The slot is free for another device even before the reaper runs.
     expect((await claim(iphone)).status).toBe(200);
@@ -191,10 +192,11 @@ describe('account state and settings', () => {
     expect((await request(app).get('/api/accounts/999999/state')).status).toBe(404);
   });
 
-  it('POST /devices/:id/hello records last_seen_at', async () => {
+  it('POST /devices/:id/hello records last_seen_at (online comes from sockets, not hello)', async () => {
     const r = await request(app).post(`/api/devices/${mac}/hello`);
     expect(r.body).toMatchObject({ deviceName: 'MacBook', username: 'brij' });
-    expect((await state()).body.devices[0].online).toBe(true);
+    expect(await count('SELECT last_seen_at > NOW(3) - INTERVAL 5 SECOND FROM device WHERE device_id = ?', [mac])).toBe(1);
+    expect((await state()).body.devices[0].online).toBe(false);
   });
 });
 

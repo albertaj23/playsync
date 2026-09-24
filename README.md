@@ -32,10 +32,10 @@ npm -w web run build     # static bundle in web/dist
 ## Test
 
 ```bash
-npm test                 # vitest against the real Dockerized MySQL (~5 s)
+npm test                 # server suite against the real Dockerized MySQL, then web unit tests (~6 s)
 ```
 
-The suite covers the schema and seed, every strategy's semantics, 20-way concurrent races (safe strategies never violate the invariant; NAIVE and TXN_RR do), heartbeat fencing (410 PREEMPTED / EXPIRED, with no lease revival), pause/resume/release, idempotency, fault-injection rollback, and the demo endpoints. Tests reset the accounts they use, so they can run while the app is open, but they will end any sessions you have playing on `brij`.
+The server suite covers the schema and seed, every strategy's semantics, 20-way concurrent races (safe strategies never violate the invariant; NAIVE and TXN_RR do), heartbeat fencing (410 PREEMPTED / EXPIRED, with no lease revival), pause/resume/release, idempotency, fault-injection rollback, real-time pushes (published only after commit; a taken-over device is told immediately), the lease reaper, and the live correctness checks (each one shown failing when its property is broken). The web suite tests the versioned store that discards out-of-order pushes. Tests reset the accounts they use, so they can run while the app is open, but they will end any sessions you have playing on `brij`.
 
 If the database is ever in a strange state, start from a clean one:
 
@@ -47,24 +47,26 @@ npm run db:reset
 
 | Page | What it demonstrates |
 |---|---|
-| **Overview** `/` | DB health, the invariant, build progress, live schema (tables, row counts, indexes, foreign keys) |
-| **Playground** `/playground` | The four `brij` devices as independent clients: claim, pause/resume, stop, the ASK takeover prompt, lease countdown, **Sleep** (stops heartbeats → zombie device), a duplicate-request idempotency test, live strategy/limit/policy controls, the invariant meter and the audit log |
-| **Race lab** `/race` | Fires N simultaneous claims under any strategy (pre-acquired connections + barrier), then runs the invariant query. **Run all 6** compares the strategies side by side |
+| **Home** `/` | What the app does, in plain language, and where to go next |
+| **My devices** `/devices` | The four `brij` devices, each an independent live client: play, pause/resume, stop, the “Play here instead?” prompt, **Go offline**, and plain-language settings (how many devices may play, what happens when a new one starts) |
+| **Single device** `/device` | One device on its own, for opening on a real phone |
+| **Stress test** `/stress` | Makes N devices press Play at the same instant under a chosen protection method, then gives a verdict: did the limit hold? **Compare all** runs every method |
+| **Stats for nerds** `/nerds` | What the friendly pages hide, in six tabs: **Checks** (six SQL assertions re-run after every change, with history), **Action trace** (every request and response from any tab), **Live state** (sessions, leases, versions, live strategy switch), **Audit log**, **Stress data** (full numbers and charts), **Database** (schema, indexes, foreign keys) |
 
 ### Demo script (about 3 minutes)
 
-1. **Handoff.** In the Playground, press Play on MacBook, then Play on iPhone. With policy ASK the iPhone asks "Take over?". Confirm it. The MacBook finds out on its next heartbeat (≤ 5 s) and shows "Playback moved to iPhone".
-2. **Zombie device.** Play on MacBook, press **Sleep** on it, take over from iPad, wait ~5 s (a heartbeat queues), then **Wake** the MacBook. Its stale heartbeat is fenced: `410 PREEMPTED`.
-3. **Lease expiry.** Play on a device, press Sleep and wait 15 s. The session disappears from the server's view and the invariant meter drops to 0; Wake gets `410 EXPIRED`. The lease is never revived.
-4. **Idempotency.** Press "Send duplicate claim" on an idle device: two concurrent requests with one id yield one session (see the audit log).
-5. **Write skew.** In the Race lab, keep the defaults (30 claims, 1 account, 20 ms window) and press **Run all 6**. NAIVE and TXN_RR grant ~30 streams on a 1-stream account; the other four show 0 violations, and each pays in its own way: SERIALIZABLE in deadlocks, OPTIMISTIC in retries, PESSIMISTIC in queueing.
+1. **Handoff.** In My devices, press Play on MacBook, then Play on iPhone. The iPhone asks “Play here instead?”. Confirm it, and the MacBook stops instantly with “Playback moved to iPhone.”
+2. **Zombie device.** Play on MacBook, press **Go offline** on it, take over from iPad, wait ~6 s, then **Back online** on MacBook. It learns the news only now (its late heartbeat is refused) and says the music moved while it was offline.
+3. **Lease expiry.** Play on a device, press Go offline and wait 20 s. The server lets the stream go (the reaper marks it expired within ~2 s of the lease lapsing); Back online says the device was offline too long. The lease is never revived.
+4. **Proof.** Open **Stats for nerds** in a second tab while you do the above. Every click shows up in the Action trace, and the Checks tab re-verifies the database after each one. Use its “Send duplicate request” probe to see idempotency.
+5. **Write skew.** In the Stress test, keep the defaults and press **Compare all**. “No protection” and “Basic grouping” (NAIVE, TXN_RR) let ~30 devices play on a 1-device account; the other four hold the limit. Stats for nerds → Stress data shows what each one paid in retries, deadlocks and latency.
 
-Switching the live strategy to NAIVE or TXN_RR in the Playground makes the live app unsafe too. That's intentional.
+Switching the live strategy to NAIVE or TXN_RR (Stats for nerds → Live state) makes the live app unsafe too. That's intentional.
 
 ### On a real phone
 
 1. Find your Mac's LAN IP: `ipconfig getifaddr en0`
-2. With `npm run dev` running, open `http://<mac-ip>:5173/playground?device=iPhone` on the phone (on the same Wi-Fi). `?device=` shows just that device's panel.
+2. With `npm run dev` running, open `http://<mac-ip>:5173/device?account=brij&device=iPhone` on the phone (on the same Wi-Fi).
 3. Allow the macOS firewall prompt for Node if one appears. Campus Wi-Fi often isolates clients from each other; if the phone can't connect, turn on the phone's hotspot and join it from the Mac.
 
 ## Scripts
@@ -76,7 +78,7 @@ Switching the live strategy to NAIVE or TXN_RR in the Playground makes the live 
 | `npm run db:reset` | Drop the volume and re-create the DB from `schema.sql` and `seed.sql` |
 | `npm run db:shell` | Open a `mysql` client inside the container |
 | `npm run dev` | Start the server (tsx watch) and web (Vite) together |
-| `npm test` | Run the server test suite |
+| `npm test` | Run the server and web test suites |
 | `npm run typecheck` | Run `tsc` on both workspaces |
 | `npm run bench` | CLI experiment matrix (Phase 4) |
 
