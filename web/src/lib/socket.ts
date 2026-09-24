@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import type { Snapshot } from './api';
+import type { Snapshot, StepperUpdate } from './api';
 import { recordTrace } from './trace';
 import { VersionedStore } from './versionedStore';
 
@@ -53,6 +53,26 @@ export function useAccountState(opts: {
   }, [accountId, deviceId, enabled]);
 
   return { snapshot, connected };
+}
+
+/**
+ * Watches the Transaction Stepper's shared session (not account-scoped, so no accountId/deviceId
+ * needed). Reports connection status and forwards every `stepper_update` push to `onUpdate`.
+ */
+export function useStepperUpdates(onUpdate: (u: StepperUpdate) => void): { connected: boolean } {
+  const [connected, setConnected] = useState(false);
+  const cb = useRef(onUpdate);
+  cb.current = onUpdate;
+
+  useEffect(() => {
+    const socket: Socket = io({ path: '/socket.io', transports: ['websocket'], forceNew: true });
+    socket.on('connect', () => { setConnected(true); socket.emit('join_stepper', {}); });
+    socket.on('disconnect', () => setConnected(false));
+    socket.on('stepper_update', (u: StepperUpdate) => cb.current(u));
+    return () => { socket.disconnect(); };
+  }, []);
+
+  return { connected };
 }
 
 /** Lease remaining right now, interpolated from the last pushed value. */

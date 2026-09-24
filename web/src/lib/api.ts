@@ -121,3 +121,36 @@ export interface ExperimentRun {
   errors: number; violations: number; p50Ms: number; p95Ms: number; throughputRps: number; wallMs: number;
   batchId: string | null; trial: number; source: 'UI' | 'API' | 'BENCH' | 'TEST'; detail: unknown; createdAt: string;
 }
+
+// -------------------------------------------------------------- Phase 5: Transaction Stepper
+
+export type TxnLabel = 'T1' | 'T2';
+export type StepStatus = 'PENDING' | 'WAITING' | 'DONE' | 'ERROR' | 'KILLED';
+
+export interface StepResultView {
+  index: number; display: string; status: StepStatus; resolvedSql?: string;
+  rows?: unknown; affectedRows?: number; errno?: number; errorMessage?: string; deadlockText?: string;
+}
+export interface TxnView {
+  label: TxnLabel; connId: number | null; isolation: string | null; killed: boolean; busy: boolean;
+  steps: StepResultView[]; cursor: number;
+}
+export interface StepperStateView {
+  scenarioId: string | null; accountIds: number[]; txns: Record<TxnLabel, TxnView>;
+}
+export interface StepperUpdate { txn: TxnLabel; index: number; result: StepResultView | null; killed?: boolean }
+
+export interface StepperScenario {
+  id: string; title: string; syllabusRefs: string[]; expected: string; explanation: string;
+  suggestedOrder: string[];
+}
+
+export interface LockRow {
+  connId: number; label: TxnLabel | 'other'; table: string; index: string | null;
+  type: string; mode: string; status: 'GRANTED' | 'WAITING'; data: string | null;
+}
+export interface WaitRow { waitingConn: number; waitingLabel: TxnLabel | 'other'; blockingConn: number; blockingLabel: TxnLabel | 'other' }
+export interface LockSnapshot { locks: LockRow[]; waits: WaitRow[]; cycle: boolean }
+
+export interface InvariantBreach { accountId: number; maxStreams: number; active: number }
+export interface InvariantResult { breaches: InvariantBreach[]; violations: number }

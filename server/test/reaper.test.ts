@@ -87,6 +87,22 @@ describe('lease reaper', () => {
     expect((await sessionRow(r.sessionId))!.status).toBe('PLAYING');
   });
 
+  it('skips the stepper accounts so the stepper invariant panel still sees committed sessions', async () => {
+    for (const username of ['step_a', 'step_b']) {
+      const acct2 = await resetAccount(username);
+      const [dev] = await deviceIds(username);
+      const conn = await appPool.getConnection();
+      const r = await executeClaim(strategies.PESSIMISTIC, conn,
+        { accountId: acct2, deviceId: dev!, songId: song, mode: 'NORMAL' }, newStats()).finally(() => conn.release());
+      if (r.outcome !== 'GRANTED') throw new Error('expected grant');
+      await expireLease(r.sessionId);
+      const reaped = await reapOnce();
+      expect(reaped.find((x) => x.accountId === acct2)).toBeUndefined();
+      expect((await sessionRow(r.sessionId))!.status).toBe('PLAYING');
+      await resetAccount(username);
+    }
+  });
+
   it('running on a timer, expires a session within lease + reaper interval', async () => {
     // Scaled-down version of "within LEASE_MS + REAPER_MS": a 300 ms lease and a 200 ms reaper.
     const sid = await play();

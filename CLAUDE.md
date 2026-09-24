@@ -18,8 +18,9 @@ The two-devices-press-Play race is **write skew / a phantom**, not a lost update
 | 1 | Schema, seed, ER + normalization docs | ✅ done | `main` |
 | 2 | Six strategies, playback service, REST API | ✅ done | `phase-2` |
 | 3 | Real-time sync, lease reaper, friendly UI + Stats for nerds | ✅ done | `phase-3` |
-| 4 | Concurrency Lab: trials, persistence, lost update, bench | ✅ done | `phase-4` (current) |
-| 5 | Transaction Stepper | **next**. Plan: [docs/implementation/phases-5-7.md](docs/implementation/phases-5-7.md) | `phase-5` |
+| 4 | Concurrency Lab: trials, persistence, lost update, bench | ✅ done | `phase-4` |
+| 5 | Transaction Stepper | ✅ built, **uncommitted** pending user approval. Plan: [docs/implementation/phases-5-7.md](docs/implementation/phases-5-7.md) | `phase-5` (current) |
+| 5.5 | Simulation Control Room (`/sim`) | **next** (after Phase 5 is committed). Plan: [docs/implementation/phase-sim.md](docs/implementation/phase-sim.md) | `phase-sim` |
 | 6 | Index lab + report docs | planned (same file) | `phase-6` |
 | 7 | Stretch goals, **only if the user asks** | planned (same file) | — |
 
@@ -42,7 +43,7 @@ npm -w server run test:fast # server tests, skipping the slow Concurrency Lab te
 npm run bench               # full experiment matrix (~1200 trials, several minutes); --quick, --trials N, --only stream|lost, --no-md
 ```
 
-Baseline at the end of Phase 4: **127 server tests pass (2 skipped by design) + 3 web tests**, typecheck clean, build succeeds. Keep it that way: never finish a step with a red suite.
+Baseline at the end of Phase 5: **140 server tests pass (2 skipped by design) + 3 web tests**, typecheck clean, build succeeds. Keep it that way: never finish a step with a red suite.
 
 ## 4. Repository map
 
@@ -63,7 +64,7 @@ server/src/
   strategies/                  types.ts, common.ts (shared statements, grant/reject), one file per strategy, index.ts (registry + executeClaim = idempotency wrapper).
   services/playback.ts         claim (policy handling), heartbeat (fencing, 410), pause/release, settings, endAll, live strategy switch.
   services/accountState.ts     bumpVersion(), readSnapshot() (consistent READ ONLY snapshot).
-  services/leaseReaper.ts      reapOnce(), startReaper(ms). Skips lab accounts.
+  services/leaseReaper.ts      reapOnce(), startReaper(ms). Skips lab accounts and step_a/step_b.
   services/checks.ts           Six live SQL assertions per account (GET /api/accounts/:id/checks).
   realtime/                    presence.ts (online set), publisher.ts (publish-after-commit interface), socket.ts (rooms, join, pushes).
   lab/labLock.ts                withLabLock(fn): MySQL named lock (GET_LOCK('playsync.lab', 0)) so the UI/bench/tests can't clash on lab accounts. Throws LabBusyError if held.
@@ -72,6 +73,8 @@ server/src/
   lab/persist.ts               saveRun()/listRuns(): experiment_run insert/read, DECIMAL→number conversion.
   lab/stats.ts                 percentile/mean/median/round2, shared by both experiment runners.
   lab/invariant.ts             The invariant query (checkInvariant).
+  lab/stepper/                 Transaction Stepper: types, scenarios.ts (8 scenarios as data), engine.ts (singleton; T1/T2/admin unpooled connections, 300 ms WAITING race, busy flag, generation guard, KILL), locks.ts (data_locks/data_lock_waits inspector), emitter.ts (push interface -> socket room `stepper`).
+  db/namedLock.ts             Generic MySQL GET_LOCK helper (withNamedLock); labLock.ts and the stepper build on it.
   routes/                      health, info (read-only UI endpoints + checks), accounts (state/settings/end-all/hello/admin strategy), playback,
                                 lab (/lab/race single-trial, /lab/experiments, /lab/lost-update, /lab/runs), http.ts (asyncHandler + error mapping).
 server/test/                   One file per area; helpers.ts has resetAccount(), deviceIds(), expireLease(), count()...  lab.test.ts is slow (~35s); test:fast excludes it.
@@ -140,6 +143,13 @@ web/src/
 19. (Phase 4) `POST /lab/race` (the friendly page's single-trial endpoint) now returns `runId`/`batchId`/`trial` fields too (it's implemented as `runStreamLimitExperiment({..., trials: 1})`); it accepts an optional `batchId` in the body so "Compare all" groups its six calls under one batch.
 20. (Phase 4) The CAS lost-update variant caps retries at 500 attempts and then reports an `error`, not an infinite loop; this is why `lost` is defined via `succeeded − finalCount` rather than `N − final` (see deviation 17).
 21. (Phase 4) The CLI bench prints one progress line per **trial**, but because `runStreamLimitExperiment`/`runLostUpdateExperiment` return only after all trials of one matrix cell finish, all of a cell's lines print together when that cell completes, not truly streamed one at a time. The numbers are per-trial and correct either way.
+
+22. (Phase 5) The stepper uses its own named lock `playsync.stepper` (separate from `playsync.lab`), held only around `load`/`reset` DB setup. It never touches the CONSTRAINT unique index (no scenario needs it), so the plan's "ensure index absent / restore" step was skipped.
+23. (Phase 5) 8 scenarios: ORDERED_LOCKING is its own selectable scenario. OPTIMISTIC_CAS steps show a `{v}` placeholder until they run (the value comes from that transaction's own earlier read); the resolved SQL is shown afterwards.
+24. (Phase 5) The lease reaper now also skips the stepper accounts `step_a`/`step_b` (like lab accounts), otherwise their 15 s sessions were expired before the stepper's invariant panel could show the violation.
+25. (Phase 5) `load()`/`reset()` first end any open transaction (ROLLBACK, or KILL + reconnect if a step is still WAITING) and bump a generation counter so a stale in-flight step cannot write into the new scenario. Without this, loading a scenario on top of one holding row locks hung (BUSY).
+26. (Phase 5) Extra endpoint `GET /lab/stepper/invariant`; a transaction refuses a new Step while its previous step is still WAITING (`busy`).
+27. The UI was redesigned dark (zinc + translucent whites, anime.js v4) by another contributor. The Tailwind `stone` scale is remapped for dark in `web/src/index.css` so the nerds/stress components keep working; do not use `stone-900/950` as a dark background (use `bg-black/40`). `useAnime` creates its scope lazily (a mount-only scope left cards at opacity 0 when the ref attached after a Loading branch).
 
 Record any new deviation you make in this list, and in your phase summary.
 

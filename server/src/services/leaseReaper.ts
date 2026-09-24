@@ -2,8 +2,10 @@
 //
 // It is NOT what makes claims correct: every claim already treats a lapsed lease as inactive
 // ("active" = PLAYING AND lease_expires_at > NOW(3)), and a heartbeat can never revive one.
-// Lab accounts are skipped so the reaper never takes account locks in the middle of an experiment
-// (race runs reset those accounts themselves; CONSTRAINT expires its own stale rows).
+// Lab accounts AND the Transaction Stepper's accounts (step_a, step_b) are skipped so the reaper
+// never takes account locks or expires sessions in the middle of an experiment/demo (race runs
+// reset lab accounts themselves; CONSTRAINT expires its own stale rows; the stepper's invariant
+// panel must still see the sessions its transactions committed after their 15 s lease).
 
 import type { RowDataPacket } from 'mysql2/promise';
 import { appPool } from '../db/pool.js';
@@ -19,7 +21,8 @@ export async function reapOnce(): Promise<ReapResult[]> {
   // 1. Which accounts have lapsed PLAYING sessions? Uses ix_session_status_lease.
   const [accounts] = await appPool.query<RowDataPacket[]>(
     `SELECT DISTINCT s.account_id FROM playback_session s JOIN account a ON a.account_id = s.account_id
-     WHERE s.status = 'PLAYING' AND s.lease_expires_at <= NOW(3) AND a.is_lab = FALSE`);
+     WHERE s.status = 'PLAYING' AND s.lease_expires_at <= NOW(3) AND a.is_lab = FALSE
+       AND a.username NOT IN ('step_a', 'step_b')`);
 
   const results: ReapResult[] = [];
   for (const { account_id: accountId } of accounts) {

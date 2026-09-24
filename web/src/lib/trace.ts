@@ -114,5 +114,9 @@ export function summarize(method: string, path: string, body: Record<string, unk
     const agg = (res.aggregate ?? {}) as { finalCountMean?: number; lostMean?: number };
     return `lost update ${b.variant} ×${b.increments} → counter ${agg.finalCountMean}, ${agg.lostMean} lost`;
   }
+  if (path === '/lab/stepper/load') return status === 200 ? `stepper: load ${b.scenarioId}` : `stepper: load ${b.scenarioId} → ${status} ${res.message ?? ''}`;
+  if (path === '/lab/stepper/step') return status === 200 ? `stepper: step ${b.txn} → ${res.status}` : `stepper: step ${b.txn} → ${status} ${res.message ?? ''}`;
+  if (path === '/lab/stepper/kill') return status === 200 ? `stepper: KILL ${b.txn}` : `stepper: kill ${b.txn} → ${status} ${res.message ?? ''}`;
+  if (path === '/lab/stepper/reset') return status === 200 ? 'stepper: reset' : `stepper: reset → ${status} ${res.message ?? ''}`;
   return `${method} ${path} → ${status}`;
 }

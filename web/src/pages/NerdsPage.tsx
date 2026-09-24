@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { api, type ChecksResponse, type ErrorBody, type EventRow } from '../lib/api';
 import { useAccountState } from '../lib/socket';
 import { useTrace } from '../lib/trace';
@@ -10,11 +10,13 @@ import { DatabaseTab } from '../components/nerds/DatabaseTab';
 import { LabTab } from '../components/nerds/LabTab';
 import { LiveStateTab } from '../components/nerds/LiveStateTab';
 import { RunsTab } from '../components/nerds/RunsTab';
+import { StepperTab } from '../components/nerds/StepperTab';
 import { TraceTab } from '../components/nerds/TraceTab';
 
 const TABS = [
   { id: 'checks', label: 'Checks' },
   { id: 'lab', label: 'Lab' },
+  { id: 'stepper', label: 'Stepper' },
   { id: 'trace', label: 'Action trace' },
   { id: 'live', label: 'Live state' },
   { id: 'audit', label: 'Audit log' },
@@ -75,12 +77,13 @@ export default function NerdsPage() {
 
   const setTab = (id: TabId) => setParams((p) => { p.set('tab', id); return p; }, { replace: true });
 
-  if (loadError) return <p className="text-rose-600">Couldn&apos;t load account “{username}”: {loadError}</p>;
+  if (loadError) return <p className="text-rose-400">Couldn&apos;t load account “{username}”: {loadError}</p>;
 
   return (
-    <div className="space-y-6">
+    <div className="nerdy space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
+          <Link to="/devices" className="mb-2 inline-block font-sans text-sm font-medium text-violet-400 hover:underline">← Back to the friendly version</Link>
           <h1 className="font-mono text-2xl font-semibold tracking-tight text-stone-900">stats for nerds</h1>
           <p className="mt-1 max-w-2xl text-sm text-stone-600">
             What the friendly pages hide: every request they sent, what the server answered, the live database state,
@@ -100,7 +103,7 @@ export default function NerdsPage() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cx('-mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-2 font-mono text-sm transition-colors',
-              tab === t.id ? 'border-violet-600 text-violet-700' : 'border-transparent text-stone-500 hover:text-stone-800')}
+              tab === t.id ? 'border-violet-600 text-violet-300' : 'border-transparent text-stone-500 hover:text-stone-800')}
           >
             {t.label}
           </button>
@@ -109,6 +112,7 @@ export default function NerdsPage() {
 
       {tab === 'checks' && <ChecksTab checks={checks} history={history} snapshot={snapshot} onRunNow={refresh} />}
       {tab === 'lab' && <LabTab />}
+      {tab === 'stepper' && <StepperTab />}
       {tab === 'trace' && <TraceTab trace={trace} snapshot={snapshot} />}
       {tab === 'live' && <LiveStateTab snapshot={snapshot} connected={connected} />}
       {tab === 'audit' && <AuditTab events={events} />}

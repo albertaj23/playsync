@@ -3,6 +3,7 @@ import { createApp } from './app.js';
 import { config } from './config.js';
 import { closePools } from './db/pool.js';
 import { attachSocket } from './realtime/socket.js';
+import { engine as stepperEngine } from './lab/stepper/engine.js';
 import { startReaper } from './services/leaseReaper.js';
 import { setLiveStrategy } from './services/playback.js';
 
@@ -22,6 +23,7 @@ async function shutdown() {
   stopReaper();
   io.close();
   server.close();
+  await stepperEngine.closeAll();
   await closePools();
   process.exit(0);
 }

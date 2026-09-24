@@ -32,7 +32,7 @@ npm -w web run build     # static bundle in web/dist
 ## Test
 
 ```bash
-npm test                 # server suite against the real Dockerized MySQL, then web unit tests (~45 s)
+npm test                 # server suite against the real Dockerized MySQL, then web unit tests (~55 s)
 npm -w server run test:fast   # everything except the slow Concurrency Lab tests (~6 s)
 ```
 
@@ -52,7 +52,7 @@ npm run db:reset
 | **My devices** `/devices` | The four `brij` devices, each an independent live client: play, pause/resume, stop, the “Play here instead?” prompt, **Go offline**, and plain-language settings (how many devices may play, what happens when a new one starts) |
 | **Single device** `/device` | One device on its own, for opening on a real phone |
 | **Stress test** `/stress` | Two experiments, switchable at the top. **Pressing Play together**: N devices press Play at once under a chosen protection method; **Counting plays**: N people finish a song at once and a play counter is (or isn't) updated correctly. Either way: a verdict, and **Compare all** runs every method |
-| **Stats for nerds** `/nerds` | What the friendly pages hide, in seven tabs: **Checks** (six SQL assertions re-run after every change, with history), **Lab** (full-control Concurrency Lab: pick strategies/variants, parameters and trial counts directly, saved to the database), **Action trace** (every request and response from any tab), **Live state** (sessions, leases, versions, live strategy switch), **Audit log**, **Experiment runs** (every trial ever saved to `experiment_run`, filterable by batch/experiment/accounts/delay, with charts built from the database), **Database** (schema, indexes, foreign keys) |
+| **Stats for nerds** `/nerds` | What the friendly pages hide, in eight tabs: **Checks** (six SQL assertions re-run after every change, with history), **Lab** (full-control Concurrency Lab: pick strategies/variants, parameters and trial counts directly, saved to the database), **Stepper** (two real MySQL transactions run one statement at a time; live InnoDB lock table, wait-for graph, deadlocks with InnoDB's own report, KILL and undo-log recovery; 8 scenarios), **Action trace** (every request and response from any tab), **Live state** (sessions, leases, versions, live strategy switch), **Audit log**, **Experiment runs** (every trial ever saved to `experiment_run`, filterable by batch/experiment/accounts/delay, with charts built from the database), **Database** (schema, indexes, foreign keys) |
 
 ### Demo script (about 3 minutes)
 
@@ -63,7 +63,7 @@ npm run db:reset
 5. **Write skew.** In the Stress test (Pressing Play together), keep the defaults and press **Compare all**. “No protection” and “Basic grouping” (NAIVE, TXN_RR) let ~30 devices play on a 1-device account; the other four hold the limit. Stats for nerds → Experiment runs shows what each one paid in retries, deadlocks and latency, read straight from `experiment_run`.
 6. **Lost update.** Switch the Stress test to **Counting plays** and press **Compare all**. “Read, then write” loses most of the plays; the other three variants always land on exactly N.
 
-Switching the live strategy to NAIVE or TXN_RR (Stats for nerds → Live state) makes the live app unsafe too. That's intentional. Stats for nerds → **Lab** gives full control over both experiments (every strategy/variant, custom concurrency, accounts, trials) for deeper digging, and `npm run bench` runs the whole matrix from the command line and writes `docs/experiments.md` + CSVs in `docs/results/`.
+Switching the live strategy to NAIVE or TXN_RR (Stats for nerds → Live state) makes the live app unsafe too. That's intentional. Stats for nerds → **Stepper** shows *why* it happens statement by statement (start with “Locking too late at REPEATABLE READ”). Stats for nerds → **Lab** gives full control over both experiments (every strategy/variant, custom concurrency, accounts, trials) for deeper digging, and `npm run bench` runs the whole matrix from the command line and writes `docs/experiments.md` + CSVs in `docs/results/`.
 
 ### On a real phone
 

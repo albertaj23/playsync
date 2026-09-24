@@ -3,11 +3,13 @@ import type { ResultSetHeader } from 'mysql2/promise';
 import { Server, type Socket } from 'socket.io';
 import { z } from 'zod';
 import { appPool } from '../db/pool.js';
+import { setStepperEmitter } from '../lab/stepper/emitter.js';
 import { getSnapshot } from '../services/playback.js';
 import { deviceConnected, deviceDisconnected } from './presence.js';
 import { setPublisher, type Publisher } from './publisher.js';
 
-// Rooms: account:{id} receives `account_state` snapshots; device:{id} receives `session_lost`.
+// Rooms: account:{id} receives `account_state` snapshots; device:{id} receives `session_lost`;
+// `stepper` receives `stepper_update` (not account-scoped: the stepper is a single shared session).
 // A client joins with {accountId, deviceId}; an observer (the wall's admin view) omits deviceId.
 
 const Join = z.object({
@@ -37,9 +39,15 @@ export function attachSocket(server: http.Server): Server {
     },
   };
   setPublisher(publisher);
+  setStepperEmitter((update) => { io.to('stepper').emit('stepper_update', update); });
 
   io.on('connection', (socket: Socket) => {
     let joined: { accountId: number; deviceId?: number } | null = null;
+
+    socket.on('join_stepper', async (_raw: unknown, ack?: (res: object) => void) => {
+      await socket.join('stepper');
+      ack?.({ ok: true });
+    });
 
     socket.on('join', async (raw: unknown, ack?: (res: object) => void) => {
       const parsed = Join.safeParse(raw);
