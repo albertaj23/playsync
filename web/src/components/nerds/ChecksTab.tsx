@@ -40,13 +40,13 @@ export function ChecksTab({ checks, history, snapshot, onRunNow }: {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           {(checks?.checks ?? []).map((c) => (
-            <div key={c.id} className={cx('rounded-xl border p-4', c.passed ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-300 bg-rose-50')}>
+            <div key={c.id} className={cx('rounded-xl border p-4', c.passed ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-rose-500/30 bg-rose-500/10')}>
               <div className="flex items-start justify-between gap-2">
                 <div className="font-medium text-stone-900">{c.passed ? '✓' : '✗'} {c.title}</div>
                 <span className="font-mono text-[10px] text-stone-400">{c.id}</span>
               </div>
               <p className="mt-1 text-xs text-stone-600">{c.meaning}</p>
-              <p className={cx('mt-2 font-mono text-xs', c.passed ? 'text-emerald-700' : 'text-rose-700')}>{c.detail}</p>
+              <p className={cx('mt-2 font-mono text-xs', c.passed ? 'text-emerald-400' : 'text-rose-400')}>{c.detail}</p>
             </div>
           ))}
           {!checks && <p className="text-sm text-stone-500">Running checks…</p>}
@@ -65,7 +65,7 @@ export function ChecksTab({ checks, history, snapshot, onRunNow }: {
           {history.map((h, i) => (
             <li key={`${h.at}-${i}`} className="px-5 py-2.5 text-xs">
               <div className="flex items-center justify-between">
-                <span className={cx('font-medium', h.allPassed ? 'text-emerald-700' : 'text-rose-700')}>
+                <span className={cx('font-medium', h.allPassed ? 'text-emerald-400' : 'text-rose-400')}>
                   {h.allPassed ? '✓ all 6 passed' : `✗ ${h.failed.join(', ')}`}
                 </span>
                 <span className="font-mono text-stone-400">{time(h.at)}</span>

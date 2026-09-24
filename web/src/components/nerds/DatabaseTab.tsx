@@ -20,7 +20,7 @@ export function DatabaseTab() {
     }).catch(e => setError(e.message));
   }, []);
 
-  if (error) return <p className="text-rose-600 text-sm">{error}</p>;
+  if (error) return <p className="text-rose-400 text-sm">{error}</p>;
   if (!health || !overview) return <p className="text-stone-500 text-sm">Loading database info...</p>;
 
   return (

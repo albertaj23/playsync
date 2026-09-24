@@ -1,3 +1,4 @@
+import { Moon, Pause, Play, Square, Sun } from 'lucide-react';
 import { Button } from '../ui';
 
 export function PlayerControls({
@@ -36,7 +37,7 @@ export function PlayerControls({
               onClick={pause}
               disabled={disablePlayback}
             >
-              Pause
+              <Pause size={16} /> Pause
             </Button>
             <Button
               className="flex-1"
@@ -44,7 +45,7 @@ export function PlayerControls({
               onClick={stop}
               disabled={disablePlayback}
             >
-              Stop
+              <Square size={14} /> Stop
             </Button>
             {songId !== playingSongId && (
               <Button
@@ -53,7 +54,7 @@ export function PlayerControls({
                 onClick={play}
                 disabled={disablePlayback}
               >
-                Play this instead
+                <Play size={16} /> Play this instead
               </Button>
             )}
           </div>
@@ -65,7 +66,7 @@ export function PlayerControls({
             onClick={play}
             disabled={disablePlayback}
           >
-            {phase === 'paused' && songId === playingSongId ? 'Resume' : 'Play'}
+            <Play size={18} fill="currentColor" /> {phase === 'paused' && songId === playingSongId ? 'Resume' : 'Play'}
           </Button>
         )}
       </div>
@@ -77,7 +78,7 @@ export function PlayerControls({
           onClick={offline ? comeOnline : goOffline}
           title="Pretend this device lost its internet connection, like a laptop lid closing"
         >
-          {offline ? 'Back online' : 'Go offline'}
+          {offline ? <Sun size={14} /> : <Moon size={14} />} {offline ? 'Back online' : 'Go offline'}
         </Button>
       </div>
     </div>

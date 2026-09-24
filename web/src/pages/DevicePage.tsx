@@ -30,7 +30,7 @@ export default function DevicePage() {
 
   const { snapshot } = useAccountState({ accountId });
 
-  if (error) return <p className="text-rose-600 text-center py-10">{error}</p>;
+  if (error) return <p className="text-rose-400 text-center py-10">{error}</p>;
   if (!accountId || !songs.length || !config || !snapshot) {
     return <p className="text-stone-500 text-center py-10">Loading...</p>;
   }

@@ -9,40 +9,40 @@ export interface MessageView {
 const list = (names: string[]) =>
   names.length <= 1 ? names[0] ?? 'another device' : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`;
 
-/** Turns a device message into words a non-technical user understands. */
+/** Turns a device message into friendly words a non-technical user understands. */
 export function describeMessage(m: DeviceMessage): MessageView {
   switch (m.kind) {
     case 'ask':
       return {
         tone: 'info',
-        title: `Music is playing on ${list(m.holders)}.`,
-        body: `Play here instead? ${list(m.holders)} will stop.`,
+        title: `${list(m.holders)} is already playing music.`,
+        body: `Want it here instead? ${list(m.holders)} will pause its turn.`,
       };
     case 'busy':
       return {
         tone: 'warn',
-        title: `${list(m.holders)} is using your account right now.`,
-        body: 'Stop it there first, or allow more devices in Settings.',
+        title: `Hold on, ${list(m.holders)} is using your account right now.`,
+        body: 'Stop it there first, or let more devices play in Settings.',
       };
     case 'moved':
       return {
-        tone: 'bad',
-        title: m.to ? `Playback moved to ${m.to}.` : 'Playback moved to another device.',
+        tone: 'info',
+        title: m.to ? `Your music hopped over to ${m.to} 🎧` : 'Your music hopped to another device 🎧',
         body: m.whileOffline ? 'That happened while this device was offline.' : undefined,
       };
     case 'timedOut':
       return {
-        tone: 'bad',
-        title: 'Playback stopped.',
+        tone: 'warn',
+        title: 'We lost touch, so we let this spot go.',
         body: m.whileOffline
-          ? 'This device was offline for too long, so the account let the stream go.'
-          : 'This device stopped checking in, so the account let the stream go.',
+          ? 'This device was offline for a while. Tap Play to grab it back.'
+          : 'This device stopped checking in. Tap Play to grab it back.',
       };
     case 'endedElsewhere':
-      return { tone: 'bad', title: 'Playback was stopped from another screen.' };
+      return { tone: 'info', title: 'Someone stopped the music from another screen.' };
     case 'finished':
-      return { tone: 'good', title: 'Song finished.' };
+      return { tone: 'good', title: 'That was a good one! 🎶 Song finished.' };
     case 'error':
-      return { tone: 'bad', title: 'Something went wrong.', body: m.text };
+      return { tone: 'bad', title: 'Oops, something went wrong.', body: m.text };
   }
 }

@@ -39,7 +39,7 @@ export function TraceTab({ trace, snapshot }: { trace: TraceEntry[]; snapshot: L
       ) : (
         <div className="max-h-[36rem] overflow-auto">
           <table className="w-full text-left text-xs">
-            <thead className="sticky top-0 bg-stone-50 font-mono text-[11px] uppercase text-stone-500">
+            <thead className="sticky top-0 bg-[var(--surface)] font-mono text-[11px] uppercase text-stone-500">
               <tr>
                 <th className="px-5 py-2 font-medium">time</th>
                 <th className="px-2 py-2 font-medium">status</th>
@@ -67,7 +67,7 @@ export function TraceTab({ trace, snapshot }: { trace: TraceEntry[]; snapshot: L
                               <div className="mb-1 font-mono text-[11px] uppercase text-stone-500">
                                 {k === 'request' ? `${e.method} /api${e.path}` : `response ${e.status}`}
                               </div>
-                              <pre className={cx('max-h-64 overflow-auto rounded-lg bg-stone-900 p-3 font-mono text-[11px] text-stone-100')}>
+                              <pre className={cx('max-h-64 overflow-auto rounded-lg bg-fg/[0.06] p-3 font-mono text-[11px] text-stone-800')}>
                                 {JSON.stringify(k === 'request' ? e.body : e.response, null, 2)}
                               </pre>
                             </div>

@@ -1,22 +1,186 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+  --font-display: "Fredoka", "Inter", ui-rounded, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Themed neutrals. Our own components use the `stone` scale (and `fg` overlays); Watermelon
+     components keep Tailwind's stock zinc/neutral scales and their own `dark:` variants. */
+  --color-fg: var(--fg);
+  --color-stone-50: var(--s50);
+  --color-stone-100: var(--s100);
+  --color-stone-200: var(--s200);
+  --color-stone-300: var(--s300);
+  --color-stone-400: var(--s400);
+  --color-stone-500: var(--s500);
+  --color-stone-600: var(--s600);
+  --color-stone-700: var(--s700);
+  --color-stone-800: var(--s800);
+  --color-stone-900: var(--s900);
+  --color-stone-950: var(--s950);
+
+  /* violet is remapped to the watermelon-coral brand colour */
+  --color-violet-500: #ff5c7a;
+  --color-violet-600: #f2416a;
+  --color-violet-800: #b02a4d;
+  --color-violet-900: #7a1d38;
+  --color-violet-300: var(--c-brand-300);
+  --color-violet-400: var(--c-brand-400);
+  --color-emerald-300: var(--c-green-300);
+  --color-emerald-400: var(--c-green-400);
+  --color-amber-300: var(--c-amber-300);
+  --color-amber-400: var(--c-amber-400);
+  --color-sky-300: var(--c-sky-300);
+  --color-sky-400: var(--c-sky-400);
+  --color-rose-300: var(--c-red-300);
+  --color-rose-400: var(--c-red-400);
 }
 
-html { color-scheme: light; }
+:root {
+  color-scheme: light;
+  --bg: #fff5ee;
+  --bg-glow-1: rgba(255, 92, 122, 0.14);
+  --bg-glow-2: rgba(52, 211, 153, 0.12);
+  --surface: #ffffff;
+  --fg: #3b2440;
+  --s50: rgba(59, 36, 64, 0.04);
+  --s100: rgba(59, 36, 64, 0.06);
+  --s200: rgba(59, 36, 64, 0.1);
+  --s300: rgba(59, 36, 64, 0.18);
+  --s400: #8a7590;
+  --s500: #6d5a74;
+  --s600: #5b4862;
+  --s700: #4a3651;
+  --s800: #3b2440;
+  --s900: #2b1830;
+  --s950: #1f1024;
+  --card-bg: rgba(255, 255, 255, 0.86);
+  --card-border: rgba(59, 36, 64, 0.08);
+  --card-shadow: 0 6px 24px -10px rgba(120, 60, 90, 0.25);
+  --header-bg: rgba(255, 245, 238, 0.8);
+  --c-brand-300: #b3143f;
+  --c-brand-400: #d61f52;
+  --c-green-300: #065f46;
+  --c-green-400: #047857;
+  --c-amber-300: #7c2d12;
+  --c-amber-400: #b45309;
+  --c-sky-300: #075985;
+  --c-sky-400: #0369a1;
+  --c-red-300: #991b1b;
+  --c-red-400: #b91c1c;
+  --chart-tick: #6d5a74;
+  --chart-grid: rgba(59, 36, 64, 0.1);
+  --chart-tip-bg: #ffffff;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #16111c;
+  --bg-glow-1: rgba(255, 92, 122, 0.1);
+  --bg-glow-2: rgba(52, 211, 153, 0.06);
+  --surface: #211a2b;
+  --fg: #ffffff;
+  --s50: rgba(255, 255, 255, 0.04);
+  --s100: rgba(255, 255, 255, 0.06);
+  --s200: rgba(255, 255, 255, 0.09);
+  --s300: rgba(255, 255, 255, 0.14);
+  --s400: #8f8a98;
+  --s500: #aaa5b3;
+  --s600: #aaa5b3;
+  --s700: #d6d2dc;
+  --s800: #e6e3ea;
+  --s900: #f4f2f7;
+  --s950: #fbfafc;
+  --card-bg: rgba(255, 255, 255, 0.045);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --header-bg: rgba(22, 17, 28, 0.75);
+  --c-brand-300: #ffa3b5;
+  --c-brand-400: #ff7a93;
+  --c-green-300: #6ee7b7;
+  --c-green-400: #34d399;
+  --c-amber-300: #fcd34d;
+  --c-amber-400: #fbbf24;
+  --c-sky-300: #7dd3fc;
+  --c-sky-400: #38bdf8;
+  --c-red-300: #fca5a5;
+  --c-red-400: #f87171;
+  --chart-tick: #aaa5b3;
+  --chart-grid: rgba(255, 255, 255, 0.08);
+  --chart-tip-bg: #211a2b;
+}
+
+html { font-feature-settings: "cv02", "cv03", "cv04", "cv11"; }
+
 body {
-  @apply bg-stone-50 text-stone-800 antialiased;
+  @apply antialiased;
+  background-color: var(--bg);
+  color: var(--s900);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, var(--bg-glow-1) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 30% at 80% 100%, var(--bg-glow-2) 0%, transparent 50%);
+  background-attachment: fixed;
 }
 
-@keyframes eq {
-  0%, 100% { transform: scaleY(0.35); }
-  50% { transform: scaleY(1); }
+h1, h2, h3 { letter-spacing: -0.01em; }
+h1, h2 { font-family: var(--font-display); }
+.nerdy h1, .nerdy h2 { font-family: var(--font-sans); letter-spacing: -0.02em; }
+.font-display { font-family: var(--font-display); }
+
+.glass-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: var(--card-shadow);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
 }
+.glass-header {
+  background: var(--header-bg);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid var(--card-border);
+}
+.surface { background: var(--surface); }
+
+.glow-violet { box-shadow: 0 0 20px -4px rgba(255, 92, 122, 0.35); }
+.glow-emerald { box-shadow: 0 0 20px -4px rgba(52, 211, 153, 0.35); }
+.glow-sky { box-shadow: 0 0 20px -4px rgba(56, 189, 248, 0.30); }
+.glow-rose { box-shadow: 0 0 20px -4px rgba(248, 113, 113, 0.30); }
+
+.label-caps {
+  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--s500);
+}
+
+/* Content that an entrance animation reveals. A CSS keyframe (not inline opacity) so it can never
+   stay invisible if JS animation is paused or fails; anime.js only adds motion on top. */
+@keyframes reveal { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+.reveal { animation: reveal 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes eq { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
 .eq-bar { transform-origin: bottom; animation: eq 0.9s ease-in-out infinite; }
 .eq-bar:nth-child(2) { animation-delay: -0.3s; }
 .eq-bar:nth-child(3) { animation-delay: -0.6s; }
 
-@keyframes pop-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes pop-in { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }
 .pop-in { animation: pop-in 0.25s ease-out; }
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52,211,153,0.4); }
+  70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(52,211,153,0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(52,211,153,0); }
+}
+.pulse-ring { animation: pulse-ring 2s ease-in-out infinite; }
+
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.bob { animation: bob 2.4s ease-in-out infinite; }
+@keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 96% { transform: scaleY(0.1); } }
+.blink { transform-box: fill-box; transform-origin: center; animation: blink 4s infinite; }
+@keyframes floatz { 0% { opacity: 0; transform: translate(0, 0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px, -14px); } }
+.floatz { animation: floatz 2.4s ease-in infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}

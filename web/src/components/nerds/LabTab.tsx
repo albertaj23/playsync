@@ -18,7 +18,7 @@ function Checkboxes<T extends string>({ options, selected, onChange }: {
     <div className="flex flex-wrap gap-2">
       {options.map((o) => (
         <label key={o} className={cx('flex cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm',
-          selected.includes(o) ? 'border-violet-400 bg-violet-50 text-violet-800' : 'border-stone-200 text-stone-600')}>
+          selected.includes(o) ? 'border-violet-400 bg-violet-500/10 text-violet-300' : 'border-stone-200 text-stone-600')}>
           <input type="checkbox" checked={selected.includes(o)} onChange={() => toggle(o)} className="accent-violet-600" />
           {o}
         </label>
@@ -29,7 +29,7 @@ function Checkboxes<T extends string>({ options, selected, onChange }: {
 
 function BatchLink({ batchId }: { batchId: string }) {
   return (
-    <Link to={`/nerds?tab=runs&batch=${batchId}`} className="text-xs font-medium text-violet-600 hover:underline">
+    <Link to={`/nerds?tab=runs&batch=${batchId}`} className="text-xs font-medium text-violet-300 hover:underline">
       Open in Experiment runs →
     </Link>
   );
@@ -121,7 +121,7 @@ function StreamLimitLab() {
               <input type="range" min={1} max={50} value={trials} onChange={(e) => setTrials(Number(e.target.value))} className="w-full accent-violet-600" />
             </Field>
           </div>
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && <p className="text-sm text-rose-400">{error}</p>}
           <Button variant="primary" onClick={run} disabled={!!running || strategies.length === 0}>
             {running ? `Running ${running.strategy} (${running.done + 1}/${running.total})…` : 'Run'}
           </Button>
@@ -148,14 +148,14 @@ function StreamLimitLab() {
                       <td className="px-2 py-1.5 text-left font-medium text-stone-900">{a.strategy}</td>
                       <td className="px-2 py-1.5 text-left text-stone-500">{a.isolationUsed}</td>
                       <td className="px-2 py-1.5">{a.trials}</td>
-                      <td className={cx('px-2 py-1.5', a.violationsTotal > 0 ? 'font-bold text-rose-600' : 'text-emerald-600')}>{a.violationsTotal}</td>
+                      <td className={cx('px-2 py-1.5', a.violationsTotal > 0 ? 'font-bold text-rose-400' : 'text-emerald-400')}>{a.violationsTotal}</td>
                       <td className="px-2 py-1.5">{Math.round((a.trialsWithViolations / a.trials) * 100)}%</td>
-                      <td className="px-2 py-1.5 text-violet-600">{a.retriesMean}</td>
-                      <td className="px-2 py-1.5 text-amber-600">{a.deadlocksMean}</td>
+                      <td className="px-2 py-1.5 text-violet-300">{a.retriesMean}</td>
+                      <td className="px-2 py-1.5 text-amber-400">{a.deadlocksMean}</td>
                       <td className="px-2 py-1.5 text-rose-500">{a.errorsTotal}</td>
                       <td className="px-2 py-1.5">{a.p50Median}</td>
                       <td className="px-2 py-1.5">{a.p95Median}</td>
-                      <td className="px-2 py-1.5 text-sky-600">{a.throughputMean}</td>
+                      <td className="px-2 py-1.5 text-sky-400">{a.throughputMean}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -225,7 +225,7 @@ function LostUpdateLab() {
               <input type="range" min={1} max={20} value={trials} onChange={(e) => setTrials(Number(e.target.value))} className="w-full accent-violet-600" />
             </Field>
           </div>
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && <p className="text-sm text-rose-400">{error}</p>}
           <Button variant="primary" onClick={run} disabled={!!running || variants.length === 0}>
             {running ? `Running ${running.variant} (${running.done + 1}/${running.total})…` : 'Run'}
           </Button>
@@ -253,9 +253,9 @@ function LostUpdateLab() {
                       <td className="px-2 py-1.5 text-left text-stone-500">{a.isolationUsed}</td>
                       <td className="px-2 py-1.5">{a.trials}</td>
                       <td className="px-2 py-1.5">{a.finalCountMean}</td>
-                      <td className={cx('px-2 py-1.5', a.lostTotal > 0 ? 'font-bold text-rose-600' : 'text-emerald-600')}>{a.lostTotal}</td>
+                      <td className={cx('px-2 py-1.5', a.lostTotal > 0 ? 'font-bold text-rose-400' : 'text-emerald-400')}>{a.lostTotal}</td>
                       <td className="px-2 py-1.5">{Math.round((a.trialsWithLoss / a.trials) * 100)}%</td>
-                      <td className="px-2 py-1.5 text-violet-600">{a.retriesMean}</td>
+                      <td className="px-2 py-1.5 text-violet-300">{a.retriesMean}</td>
                       <td className="px-2 py-1.5 text-rose-500">{a.errorsTotal}</td>
                       <td className="px-2 py-1.5">{a.p50Median}</td>
                       <td className="px-2 py-1.5">{a.p95Median}</td>

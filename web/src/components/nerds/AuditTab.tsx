@@ -69,7 +69,7 @@ export function AuditTab({ events }: { events: EventRow[] }) {
       ) : (
         <div className="overflow-auto max-h-[600px]">
           <table className="w-full text-left font-mono text-xs min-w-[800px]">
-            <thead className="bg-stone-50 text-[11px] uppercase text-stone-500 sticky top-0 shadow-sm">
+            <thead className="bg-[var(--surface)] text-[11px] uppercase text-stone-500 sticky top-0 shadow-sm">
               <tr>
                 {['time', 'event', 'device name', 'session', 'version', 'detail'].map((h) => (
                   <th key={h} className="px-5 py-2 font-medium bg-stone-50">{h}</th>

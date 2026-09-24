@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type ErrorBody, type LostUpdateResponse, type LostUpdateResult, type LostUpdateVariant, type RaceResult, type StrategyName } from '../lib/api';
 import { uuid } from '../lib/uuid';
 import { Badge, Button, Card, Field, Segmented, cx, inputCls } from '../components/ui';
+import { Verdict } from '../components/Verdict';
+import { Mascot } from '../components/Mascot';
+import { enterUp } from '../lib/motion';
 
 interface Method { name: StrategyName; label: string; idea: string; safe: boolean }
 
@@ -19,15 +22,16 @@ const labelOf = (n: StrategyName) => METHODS.find((m) => m.name === n)!.label;
 
 /** One dot per device that pressed Play: green = allowed, red = allowed but over the limit, grey = told to wait. */
 function DotGrid({ r }: { r: RaceResult }) {
+  useEffect(() => { enterUp('.race-dot', { step: 12 }); }, [r]);
   const allowedOk = r.granted - r.violations;
   const dots = [
     ...Array(allowedOk).fill('ok'), ...Array(r.violations).fill('over'),
     ...Array(r.rejected).fill('busy'), ...Array(r.errors).fill('err'),
   ] as string[];
-  const color = { ok: 'bg-emerald-500', over: 'bg-rose-500', busy: 'bg-stone-300', err: 'bg-amber-400' } as Record<string, string>;
+  const color = { ok: 'bg-emerald-500', over: 'bg-rose-500', busy: 'bg-stone-400', err: 'bg-amber-400' } as Record<string, string>;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {dots.map((d, i) => <span key={i} className={cx('h-3.5 w-3.5 rounded-full', color[d])} />)}
+      {dots.map((d, i) => <span key={i} className={cx('race-dot h-4 w-4 rounded-full', color[d])} />)}
     </div>
   );
 }
@@ -35,18 +39,18 @@ function DotGrid({ r }: { r: RaceResult }) {
 function verdict(r: RaceResult) {
   const limit = r.maxStreams * r.accounts;
   if (r.violations > 0) {
-    return { ok: false, title: `Broken: ${r.granted} devices are playing, but the limit was ${limit}.`,
-      body: `${r.violations} device${r.violations === 1 ? '' : 's'} got in that should have been turned away.` };
+    return { ok: false, title: `Whoa, ${r.granted} screens got in but only ${limit} ${limit === 1 ? 'was' : 'were'} allowed. That's the bug we're hunting 🐛`,
+      body: `${r.violations} screen${r.violations === 1 ? '' : 's'} slipped through that should have been turned away.` };
   }
-  return { ok: true, title: `Protected: ${r.granted} device${r.granted === 1 ? '' : 's'} played, within the limit of ${limit}.`,
-    body: `${r.rejected} were told the account is busy${r.errors ? `, and ${r.errors} gave up after retrying too many times` : ''}.` };
+  return { ok: true, title: `Nice! Only ${r.granted} screen${r.granted === 1 ? '' : 's'} got in, exactly as allowed 🎉`,
+    body: `${r.rejected} politely waited their turn${r.errors ? `, and ${r.errors} gave up after retrying too many times` : ''}.` };
 }
 
 function SavedLink({ batchId }: { batchId: string }) {
   return (
     <p className="mt-2 text-xs text-stone-400">
       Saved to the lab history ·{' '}
-      <Link to={`/nerds?tab=runs&batch=${batchId}`} className="font-medium text-violet-600 hover:underline">
+      <Link to={`/nerds?tab=runs&batch=${batchId}`} className="font-medium text-violet-300 hover:underline">
         see it in Stats for nerds →
       </Link>
     </p>
@@ -104,11 +108,11 @@ function StreamLimitExperiment() {
     <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
       <Card title="Set up the test">
         <div className="space-y-5">
-          <Field label={`Devices pressing Play at once: ${devices}`}>
+          <Field label={`Screens pressing Play at once: ${devices}`}>
             <input type="range" min={2} max={100} value={devices} onChange={(e) => setDevices(Number(e.target.value))} className="w-full accent-violet-600" />
           </Field>
           <div>
-            <div className="mb-1 text-sm font-medium text-stone-700">Devices allowed to play together</div>
+            <div className="mb-1 text-sm font-medium text-stone-700">Screens allowed to play together</div>
             <Segmented value={limit} onChange={setLimit} options={[1, 2, 3].map((n) => ({ value: n, label: String(n) }))} />
           </div>
           <div>
@@ -119,7 +123,7 @@ function StreamLimitExperiment() {
                   key={m.name}
                   onClick={() => setMethod(m.name)}
                   className={cx('w-full rounded-xl border p-3 text-left transition',
-                    method === m.name ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/20' : 'border-stone-200 hover:border-stone-300')}
+                    method === m.name ? 'border-violet-500 bg-violet-500/10 ring-2 ring-violet-500/20' : 'border-stone-200 hover:border-stone-300')}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-stone-900">{m.label}</span>
@@ -151,11 +155,11 @@ function StreamLimitExperiment() {
             )}
           </div>
 
-          {constraintBlocked && <p className="text-sm text-amber-700">“Built-in rule” only works when one device is allowed.</p>}
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {constraintBlocked && <p className="text-sm text-amber-400">“Built-in rule” only works when one device is allowed.</p>}
+          {error && <p className="text-sm text-rose-400">{error}</p>}
           <div className="flex gap-2">
             <Button variant="primary" className="flex-1" onClick={run} disabled={!!running || constraintBlocked}>
-              {running && comparison.length === 0 && !result ? 'Running…' : 'Run test'}
+              {running && comparison.length === 0 && !result ? 'Stampede in progress…' : 'Run test'}
             </Button>
             <Button className="flex-1" onClick={compareAll} disabled={!!running}>Compare all</Button>
           </div>
@@ -164,22 +168,20 @@ function StreamLimitExperiment() {
 
       <div className="space-y-6">
         {running && (
-          <div className="rounded-2xl border border-violet-200 bg-violet-50 px-5 py-4 text-sm text-violet-800">
-            {devices} devices are pressing Play using “{labelOf(running)}”…
+          <div className="flex items-center gap-3 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-5 py-4 text-sm text-violet-400">
+            <div className="bob shrink-0"><Mascot mood="wow" size={48} /></div>
+            {devices} screens are all tapping Play at once with “{labelOf(running)}”…
           </div>
         )}
 
         {result && v && (
           <Card>
-            <div className={cx('rounded-xl p-4', v.ok ? 'bg-emerald-50' : 'bg-rose-50')}>
-              <div className={cx('text-lg font-semibold', v.ok ? 'text-emerald-800' : 'text-rose-800')}>{v.ok ? '✅' : '❌'} {v.title}</div>
-              <p className={cx('mt-1 text-sm', v.ok ? 'text-emerald-700' : 'text-rose-700')}>{v.body}</p>
-            </div>
+            <Verdict ok={v.ok} title={v.title} body={v.body} />
             <div className="mt-5"><DotGrid r={result} /></div>
             <div className="mt-3 flex flex-wrap gap-4 text-xs text-stone-500">
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> allowed</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" /> allowed, over the limit</span>
-              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-stone-300" /> told to wait</span>
+              <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-stone-400" /> told to wait</span>
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> gave up</span>
             </div>
             <p className="mt-4 text-sm text-stone-500">
@@ -242,17 +244,17 @@ function LostUpdateDotGrid({ r }: { r: LostUpdateResult }) {
   const color = { ok: 'bg-emerald-500', lost: 'bg-rose-500' } as Record<string, string>;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {dots.map((d, i) => <span key={i} className={cx('h-3.5 w-3.5 rounded-full', color[d])} />)}
+      {dots.map((d, i) => <span key={i} className={cx('race-dot h-4 w-4 rounded-full', color[d])} />)}
     </div>
   );
 }
 
 function luVerdict(r: LostUpdateResult) {
   if (r.lost > 0) {
-    return { ok: false, title: `${r.succeeded} people listened, but the counter says ${r.finalCount}.`,
-      body: `${r.lost} play${r.lost === 1 ? ' was' : 's were'} lost.` };
+    return { ok: false, title: `${r.succeeded} people listened, but the counter only says ${r.finalCount} 😬`,
+      body: `${r.lost} play${r.lost === 1 ? ' was' : 's were'} lost along the way.` };
   }
-  return { ok: true, title: `${r.succeeded} people listened, and the counter says ${r.finalCount}.`, body: 'Every play was counted.' };
+  return { ok: true, title: `${r.succeeded} people listened, and the counter says ${r.finalCount} 🎉`, body: 'Every single play was counted.' };
 }
 
 function CountingPlaysExperiment() {
@@ -315,7 +317,7 @@ function CountingPlaysExperiment() {
                   key={m.name}
                   onClick={() => setMethod(m.name)}
                   className={cx('w-full rounded-xl border p-3 text-left transition',
-                    method === m.name ? 'border-violet-500 bg-violet-50 ring-2 ring-violet-500/20' : 'border-stone-200 hover:border-stone-300')}
+                    method === m.name ? 'border-violet-500 bg-violet-500/10 ring-2 ring-violet-500/20' : 'border-stone-200 hover:border-stone-300')}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium text-stone-900">{m.label}</span>
@@ -327,10 +329,10 @@ function CountingPlaysExperiment() {
             </div>
           </div>
 
-          {error && <p className="text-sm text-rose-600">{error}</p>}
+          {error && <p className="text-sm text-rose-400">{error}</p>}
           <div className="flex gap-2">
             <Button variant="primary" className="flex-1" onClick={run} disabled={!!running}>
-              {running && comparison.length === 0 && !result ? 'Running…' : 'Run test'}
+              {running && comparison.length === 0 && !result ? 'Stampede in progress…' : 'Run test'}
             </Button>
             <Button className="flex-1" onClick={compareAll} disabled={!!running}>Compare all</Button>
           </div>
@@ -339,17 +341,15 @@ function CountingPlaysExperiment() {
 
       <div className="space-y-6">
         {running && (
-          <div className="rounded-2xl border border-violet-200 bg-violet-50 px-5 py-4 text-sm text-violet-800">
+          <div className="flex items-center gap-3 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-5 py-4 text-sm text-violet-400">
+            <div className="bob shrink-0"><Mascot mood="wow" size={48} /></div>
             {people} people are finishing songs using “{luLabelOf(running)}”…
           </div>
         )}
 
         {result && v && (
           <Card>
-            <div className={cx('rounded-xl p-4', v.ok ? 'bg-emerald-50' : 'bg-rose-50')}>
-              <div className={cx('text-lg font-semibold', v.ok ? 'text-emerald-800' : 'text-rose-800')}>{v.ok ? '✅' : '❌'} {v.title}</div>
-              <p className={cx('mt-1 text-sm', v.ok ? 'text-emerald-700' : 'text-rose-700')}>{v.body}</p>
-            </div>
+            <Verdict ok={v.ok} title={v.title} body={v.body} />
             <div className="mt-5"><LostUpdateDotGrid r={result} /></div>
             <div className="mt-3 flex flex-wrap gap-4 text-xs text-stone-500">
               <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /> counted</span>

@@ -8,6 +8,7 @@ import {
 import { api, type ExperimentRun } from '../../lib/api';
 import type { TraceEntry } from '../../lib/trace';
 import { Badge, Button, Card, Field, cx, inputCls } from '../ui';
+import { useAnime, stagger } from '../../lib/useAnime';
 
 // A stable colour per strategy/variant name, cycling through a small palette for unknown ones.
 const PALETTE = ['#7c3aed', '#059669', '#0ea5e9', '#f59e0b', '#f43f5e', '#64748b', '#14b8a6', '#d946ef'];
@@ -98,8 +99,22 @@ export function RunsTab({ trace }: { trace: TraceEntry[] }) {
   }), [filtered, strategies, concurrencies]);
   const showLatencyChart = concurrencies.length > 1;
 
+  const { animRef, animate } = useAnime();
+
+  useEffect(() => {
+    if (filtered.length > 0) {
+      animate('.recharts-bar-rectangle', {
+        scaleY: [0, 1],
+        transformOrigin: 'bottom',
+        duration: 600,
+        delay: stagger(50),
+        ease: 'outElastic(1, .6)',
+      });
+    }
+  }, [filtered, animate]);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" ref={animRef}>
       <Card title="Filters">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Field label="Experiment">
@@ -140,7 +155,7 @@ export function RunsTab({ trace }: { trace: TraceEntry[] }) {
       {filtered.length === 0 ? (
         <Card>
           <p className="text-sm text-stone-600">
-            No runs yet for these filters. Try the <Link to="/stress" className="font-medium text-violet-700 hover:underline">Stress test</Link> page,
+            No runs yet for these filters. Try the <Link to="/stress" className="font-medium text-violet-300 hover:underline">Stress test</Link> page,
             the Lab tab, or <code className="rounded bg-stone-100 px-1 py-0.5 font-mono text-xs">npm run bench</code>.
           </p>
         </Card>
@@ -151,15 +166,15 @@ export function RunsTab({ trace }: { trace: TraceEntry[] }) {
               <div className="h-64 p-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={violationsChart} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
-                    <XAxis dataKey="strategy" tick={{ fontSize: 10, fill: '#78716c' }} angle={-30} textAnchor="end" interval={0} />
-                    <YAxis tick={{ fontSize: 10, fill: '#78716c' }} width={40} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                    <XAxis dataKey="strategy" tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} angle={-30} textAnchor="end" interval={0} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} width={40} />
                     <Tooltip
-                      contentStyle={{ borderRadius: 8, fontSize: 12, border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      contentStyle={{ borderRadius: 8, fontSize: 12, background: 'var(--chart-tip-bg)', border: '1px solid var(--card-border)', color: 'var(--s800)' }}
                       formatter={(value, name, p) => (name === 'meanViolations' ? [`${value} (${(p.payload as { pct: number }).pct}% of trials)`, 'mean violations'] : [value, name])}
                     />
                     <Bar dataKey="meanViolations" name="meanViolations" fill="#f43f5e">
-                      <LabelList dataKey="pct" position="top" formatter={(v: number) => `${v}%`} style={{ fontSize: 10, fill: '#78716c' }} />
+                      <LabelList dataKey="pct" position="top" formatter={(v: number) => `${v}%`} style={{ fontSize: 10, fill: 'var(--chart-tick)' }} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -170,10 +185,10 @@ export function RunsTab({ trace }: { trace: TraceEntry[] }) {
               <div className="h-64 p-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={retriesDeadlocksChart} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
-                    <XAxis dataKey="strategy" tick={{ fontSize: 10, fill: '#78716c' }} angle={-30} textAnchor="end" interval={0} />
-                    <YAxis tick={{ fontSize: 10, fill: '#78716c' }} width={40} />
-                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12, border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                    <XAxis dataKey="strategy" tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} angle={-30} textAnchor="end" interval={0} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} width={40} />
+                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12, background: 'var(--chart-tip-bg)', border: '1px solid var(--card-border)', color: 'var(--s800)' }} />
                     <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
                     <Bar dataKey="retries" name="retries" fill="#8b5cf6" />
                     <Bar dataKey="deadlocks" name="deadlocks" fill="#f59e0b" />
@@ -187,12 +202,12 @@ export function RunsTab({ trace }: { trace: TraceEntry[] }) {
                 <div className="h-64 p-4">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={latencyChart} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
-                      <XAxis dataKey="concurrency" tick={{ fontSize: 10, fill: '#78716c' }}>
-                        <Label value="concurrency" position="insideBottom" offset={-15} style={{ fontSize: 10, fill: '#78716c' }} />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                      <XAxis dataKey="concurrency" tick={{ fontSize: 10, fill: 'var(--chart-tick)' }}>
+                        <Label value="concurrency" position="insideBottom" offset={-15} style={{ fontSize: 10, fill: 'var(--chart-tick)' }} />
                       </XAxis>
-                      <YAxis tick={{ fontSize: 10, fill: '#78716c' }} width={40} />
-                      <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12, border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                      <YAxis tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} width={40} />
+                      <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12, background: 'var(--chart-tip-bg)', border: '1px solid var(--card-border)', color: 'var(--s800)' }} />
                       <Legend wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
                       {strategies.map((s) => (
                         <Line key={s} type="monotone" dataKey={s} name={s} stroke={colorFor(s, strategies)} connectNulls dot={{ r: 3 }} />
@@ -216,10 +231,10 @@ export function RunsTab({ trace }: { trace: TraceEntry[] }) {
               <div className="h-64 p-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={throughputChart} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e7e5e4" />
-                    <XAxis dataKey="strategy" tick={{ fontSize: 10, fill: '#78716c' }} angle={-30} textAnchor="end" interval={0} />
-                    <YAxis tick={{ fontSize: 10, fill: '#78716c' }} width={40} />
-                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12, border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--chart-grid)" />
+                    <XAxis dataKey="strategy" tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} angle={-30} textAnchor="end" interval={0} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--chart-tick)' }} width={40} />
+                    <Tooltip contentStyle={{ borderRadius: 8, fontSize: 12, background: 'var(--chart-tip-bg)', border: '1px solid var(--card-border)', color: 'var(--s800)' }} />
                     <Bar dataKey="throughput" name="throughput (rps)" fill="#0ea5e9" />
                   </BarChart>
                 </ResponsiveContainer>
@@ -230,7 +245,7 @@ export function RunsTab({ trace }: { trace: TraceEntry[] }) {
           <Card title="Runs" subtitle="newest first" padded={false}>
             <div className="max-h-[600px] overflow-auto">
               <table className="w-full min-w-[1100px] text-right font-mono text-[11px]">
-                <thead className="sticky top-0 bg-stone-50 text-left uppercase text-stone-500 shadow-sm">
+                <thead className="sticky top-0 bg-[var(--surface)] text-left uppercase text-stone-500 shadow-sm">
                   <tr>
                     {['run', 'time', 'batch', 'trial', 'src', 'strategy', 'iso', 'conc', 'acc', 'max', 'delay',
                       'ok', 'rej', 'err', 'dead', 'retry', 'viol', 'p50', 'p95', 'rps'].map((h, i) => (
@@ -252,15 +267,15 @@ export function RunsTab({ trace }: { trace: TraceEntry[] }) {
                       <td className="px-3 py-2">{r.accounts}</td>
                       <td className="px-3 py-2">{r.maxStreams}</td>
                       <td className="px-3 py-2">{r.raceDelayMs}ms</td>
-                      <td className="px-3 py-2 text-emerald-600">{r.granted}</td>
+                      <td className="px-3 py-2 text-emerald-400">{r.granted}</td>
                       <td className="px-3 py-2 text-stone-500">{r.rejected}</td>
                       <td className="px-3 py-2 text-rose-500">{r.errors}</td>
-                      <td className="px-3 py-2 text-amber-600">{r.deadlocks}</td>
-                      <td className="px-3 py-2 text-violet-600">{r.retries}</td>
-                      <td className={cx('px-3 py-2', r.violations > 0 ? 'font-bold text-rose-600' : 'text-emerald-600')}>{r.violations}</td>
+                      <td className="px-3 py-2 text-amber-400">{r.deadlocks}</td>
+                      <td className="px-3 py-2 text-violet-300">{r.retries}</td>
+                      <td className={cx('px-3 py-2', r.violations > 0 ? 'font-bold text-rose-400' : 'text-emerald-400')}>{r.violations}</td>
                       <td className="px-3 py-2">{r.p50Ms}</td>
                       <td className="px-3 py-2">{r.p95Ms}</td>
-                      <td className="px-3 py-2 text-sky-600">{r.throughputRps.toFixed(0)}</td>
+                      <td className="px-3 py-2 text-sky-400">{r.throughputRps.toFixed(0)}</td>
                     </tr>
                   ))}
                 </tbody>

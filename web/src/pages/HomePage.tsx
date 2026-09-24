@@ -1,78 +1,103 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Headphones, Zap, Microscope, Users, Hand, ShieldCheck } from 'lucide-react';
 import { api, type AppConfig, type Health } from '../lib/api';
 import { Dot } from '../components/ui';
+import { Mascot } from '../components/Mascot';
+import { useAnime } from '../lib/useAnime';
+import { enterUp, heroText } from '../lib/motion';
 
 const STEPS = [
-  { n: 1, title: 'One account, many devices', text: 'Your music account is signed in on a laptop, a phone, a tablet and a browser.' },
-  { n: 2, title: 'One stream at a time', text: 'Your plan lets one device play at a time. Start on a second device and the app asks whether to move the music there.' },
-  { n: 3, title: 'It holds up under pressure', text: 'Even if lots of devices press Play at the exact same moment, only the allowed number get through.' },
+  { icon: Users, title: 'One account, many screens', text: 'Your music is signed in on a laptop, a phone, a tablet and a browser, all at once.' },
+  { icon: Hand, title: 'One turn at a time', text: 'Start music on a second screen and it politely asks: "Want the music here instead?"' },
+  { icon: ShieldCheck, title: 'Fair, even in a stampede', text: 'Even if lots of screens tap Play at the very same moment, only the allowed number get in.' },
 ];
 
 const DESTINATIONS = [
-  { to: '/devices', emoji: '🎧', title: 'My devices', text: 'Play music on one device and watch the others react.' },
-  { to: '/stress', emoji: '⚡', title: 'Stress test', text: 'Make lots of devices press Play at once. Does the limit hold?' },
-  { to: '/nerds', emoji: '🔬', title: 'Stats for nerds', text: 'Every action, checked against the database, with all the numbers.' },
+  { to: '/devices', label: 'My devices', sub: 'Play music on one screen and watch the others react.', icon: Headphones, tint: 'bg-emerald-500/15 text-emerald-400' },
+  { to: '/stress', label: 'Stress test', sub: 'Make lots of screens press Play at once. Does the limit hold?', icon: Zap, tint: 'bg-amber-500/15 text-amber-400' },
+  { to: '/nerds', label: 'Stats for nerds', sub: 'Every action, checked against the database, with all the numbers.', icon: Microscope, tint: 'bg-sky-500/15 text-sky-400' },
 ];
 
 export default function HomePage() {
   const [health, setHealth] = useState<Health | null>(null);
   const [cfg, setCfg] = useState<AppConfig | null>(null);
+  const { animRef } = useAnime();
+  const headline = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     api.get<Health>('/health').then((r) => setHealth(r.body)).catch((e: Error) => setHealth({ ok: false, error: e.message }));
     api.get<AppConfig>('/config').then((r) => r.ok && setCfg(r.body)).catch(() => undefined);
   }, []);
 
+  useEffect(() => {
+    heroText(headline.current);
+    enterUp('.step-card', { delay: 300 });
+    enterUp('.dest-card', { delay: 500 });
+  }, []);
+
   return (
-    <div className="space-y-12">
-      <section className="pt-4 text-center">
-        <div className="mx-auto mb-5 flex w-fit gap-2 text-3xl" aria-hidden>
-          <span>💻</span><span>📱</span><span>📲</span><span>🌐</span>
+    <div className="space-y-14" ref={animRef}>
+      <section className="relative pt-4 text-center">
+        <div className="pointer-events-none absolute inset-0 -z-10 flex items-center justify-center">
+          <div className="h-64 w-96 rounded-full bg-violet-500/10 blur-3xl" />
         </div>
-        <h1 className="text-4xl font-bold tracking-tight text-stone-900 sm:text-5xl">
-          Listen anywhere.<br /><span className="text-violet-600">One device at a time.</span>
+        <div className="mx-auto mb-3 w-fit bob"><Mascot mood="cheer" size={128} /></div>
+        <p className="mx-auto mb-2 w-fit rounded-full bg-violet-500/12 px-3 py-1 text-sm font-semibold text-violet-400">Hi, I'm Melo, your music sidekick 🍉</p>
+        <h1 ref={headline} className="text-4xl font-bold tracking-tight text-stone-950 sm:text-6xl">
+          Listen anywhere. One screen at a time.
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-lg text-stone-600">
-          A small music app that keeps all your devices in agreement about which one is playing, even when they all
-          try at once.
+        <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-stone-500">
+          A music app that keeps all your devices in agreement about who's playing, even when they all try at once.
         </p>
-        <div className="mt-7 flex flex-wrap justify-center gap-3">
-          <Link to="/stress" className="rounded-xl bg-violet-600 px-5 py-2.5 font-medium text-white shadow-sm hover:bg-violet-500">
-            Try the stress test
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <Link to="/devices" className="rounded-2xl bg-violet-600 px-6 py-3 font-semibold text-[#fff] shadow-lg shadow-violet-600/30 transition-all duration-200 hover:-translate-y-0.5 hover:bg-violet-500 active:scale-95">
+            Play with my devices 🎧
           </Link>
-          <Link to="/nerds" className="rounded-xl bg-white px-5 py-2.5 font-medium text-stone-700 ring-1 ring-stone-300 hover:bg-stone-50">
-            See how it works
+          <Link to="/stress" className="rounded-2xl bg-fg/6 px-6 py-3 font-semibold text-stone-700 ring-1 ring-fg/10 transition-all duration-200 hover:-translate-y-0.5 hover:bg-fg/10 active:scale-95">
+            Try the stampede ⚡
           </Link>
         </div>
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
-        {STEPS.map((s) => (
-          <div key={s.n} className="rounded-2xl border border-stone-200 bg-white p-5">
-            <div className="grid h-8 w-8 place-items-center rounded-full bg-violet-100 text-sm font-semibold text-violet-700">{s.n}</div>
-            <h2 className="mt-3 font-semibold text-stone-900">{s.title}</h2>
-            <p className="mt-1 text-sm text-stone-600">{s.text}</p>
+        {STEPS.map((s, i) => (
+          <div key={s.title} className="step-card glass-card rounded-3xl p-6">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-500/15 text-violet-400"><s.icon size={20} /></span>
+              <span className="font-display text-sm font-semibold text-stone-400">Step {i + 1}</span>
+            </div>
+            <h2 className="mt-4 text-lg font-semibold text-stone-900">{s.title}</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-stone-500">{s.text}</p>
           </div>
         ))}
       </section>
 
       <section className="grid gap-4 md:grid-cols-3">
         {DESTINATIONS.map((d) => (
-          <Link key={d.to} to={d.to} className="group rounded-2xl border border-stone-200 bg-white p-5 transition hover:border-violet-300 hover:shadow-md">
-            <div className="text-2xl">{d.emoji}</div>
-            <h2 className="mt-2 font-semibold text-stone-900 group-hover:text-violet-700">{d.title} →</h2>
-            <p className="mt-1 text-sm text-stone-600">{d.text}</p>
+          <Link key={d.to} to={d.to} className="dest-card glass-card group rounded-3xl p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+            <span className={`grid h-12 w-12 place-items-center rounded-2xl transition-transform duration-300 group-hover:rotate-6 group-hover:scale-110 ${d.tint}`}><d.icon size={24} /></span>
+            <h2 className="mt-4 text-lg font-semibold text-stone-900">
+              {d.label} <span className="inline-block text-stone-400 transition-transform group-hover:translate-x-1">→</span>
+            </h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-stone-500">{d.sub}</p>
           </Link>
         ))}
       </section>
 
-      <footer className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 text-sm text-stone-500">
+      <p className="text-center text-sm text-stone-500">
+        Curious what a database race actually looks like?{' '}
+        <Link to="/nerds?tab=stepper" className="font-semibold text-violet-400 transition-colors hover:text-violet-500">
+          Watch two transactions collide, step by step →
+        </Link>
+      </p>
+
+      <footer className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 pb-2 text-sm text-stone-500">
         <span className="inline-flex items-center gap-1.5">
           <Dot tone={health === null ? 'stone' : health.ok ? 'green' : 'red'} />
-          {health === null ? 'Checking the database…' : health.ok ? 'Connected to the database' : 'Database unreachable. Is Docker running?'}
+          {health === null ? 'Warming up the speakers…' : health.ok ? 'Speakers are warm ✅' : "Can't reach the database. Is Docker running?"}
         </span>
-        {cfg && <span>A device that goes quiet for {cfg.leaseMs / 1000}s loses its stream</span>}
+        {cfg && <span>A screen that goes quiet for {cfg.leaseMs / 1000}s loses its turn</span>}
       </footer>
     </div>
   );
