@@ -23,5 +23,14 @@ services:
       timeout: 3s
       retries: 60
       start_period: 5s
+  # Phase 7 stretch: a free, local Redis for the REDIS_LEASE strategy (SET key value NX PX <lease>).
+  redis:
+    image: redis:7-alpine
+    ports: ["${REDIS_PORT:-6380}:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
 volumes:
   mysql-data:

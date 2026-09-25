@@ -6,6 +6,7 @@ import {
 } from '../../lib/api';
 import { uuid } from '../../lib/uuid';
 import { Badge, Button, Card, Field, cx, inputCls } from '../ui';
+import { AdaptiveSlider } from '../watermelon/adaptive-slider';
 
 const STRATEGIES: StrategyName[] = ['NAIVE', 'TXN_RR', 'SERIALIZABLE', 'PESSIMISTIC', 'OPTIMISTIC', 'CONSTRAINT'];
 const LOST_UPDATE_VARIANTS: LostUpdateVariant[] = ['NAIVE_RMW', 'ATOMIC', 'LOCKED', 'CAS'];
@@ -99,9 +100,7 @@ function StreamLimitLab() {
                 <option value="TAKEOVER">TAKEOVER</option>
               </select>
             </Field>
-            <Field label={`Concurrency: ${concurrency}`}>
-              <input type="range" min={2} max={100} value={concurrency} onChange={(e) => setConcurrency(Number(e.target.value))} className="w-full accent-violet-600" />
-            </Field>
+            <AdaptiveSlider label="Concurrency" value={concurrency} min={2} max={100} onChange={setConcurrency} />
             <Field label="Accounts">
               <select className={inputCls} value={accounts} onChange={(e) => setAccounts(Number(e.target.value))}>
                 {[1, 2, 4, 8, 16].map((n) => <option key={n} value={n}>{n}</option>)}
@@ -117,9 +116,7 @@ function StreamLimitLab() {
                 {[0, 5, 20, 50].map((n) => <option key={n} value={n}>{n} ms</option>)}
               </select>
             </Field>
-            <Field label={`Trials: ${trials}`}>
-              <input type="range" min={1} max={50} value={trials} onChange={(e) => setTrials(Number(e.target.value))} className="w-full accent-violet-600" />
-            </Field>
+            <AdaptiveSlider label="Trials" value={trials} min={1} max={50} onChange={setTrials} />
           </div>
           {error && <p className="text-sm text-rose-400">{error}</p>}
           <Button variant="primary" onClick={run} disabled={!!running || strategies.length === 0}>
@@ -213,17 +210,13 @@ function LostUpdateLab() {
             <Checkboxes options={LOST_UPDATE_VARIANTS} selected={variants} onChange={setVariants} />
           </Field>
           <div className="grid grid-cols-3 gap-3">
-            <Field label={`Increments: ${increments}`}>
-              <input type="range" min={2} max={100} value={increments} onChange={(e) => setIncrements(Number(e.target.value))} className="w-full accent-violet-600" />
-            </Field>
+            <AdaptiveSlider label="Increments" value={increments} min={2} max={100} onChange={setIncrements} />
             <Field label="Race delay">
               <select className={inputCls} value={raceDelayMs} onChange={(e) => setRaceDelayMs(Number(e.target.value))}>
                 {[0, 5, 20, 50].map((n) => <option key={n} value={n}>{n} ms</option>)}
               </select>
             </Field>
-            <Field label={`Trials: ${trials}`}>
-              <input type="range" min={1} max={20} value={trials} onChange={(e) => setTrials(Number(e.target.value))} className="w-full accent-violet-600" />
-            </Field>
+            <AdaptiveSlider label="Trials" value={trials} min={1} max={20} onChange={setTrials} />
           </div>
           {error && <p className="text-sm text-rose-400">{error}</p>}
           <Button variant="primary" onClick={run} disabled={!!running || variants.length === 0}>

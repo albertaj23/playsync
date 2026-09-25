@@ -184,3 +184,53 @@ h1, h2 { font-family: var(--font-display); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
 }
+
+@keyframes sim-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.sim-shake { animation: sim-shake 0.35s ease-in-out 1; }
+.sim-striped { background-image: repeating-linear-gradient(135deg, rgba(244,63,94,0.16) 0 6px, transparent 6px 12px); }
+
+.fly { transform-box: view-box; transform-origin: 200px 200px; }
+
+/* `backwards` (not `both`): a forwards-filling transform animation keeps a containing block for position:fixed descendants. */
+.route-enter { animation: reveal 0.35s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
+
+/* Layout variables shared by the shell, sticky stories and bottom-docked bars. */
+:root {
+  --topbar-h: 4rem;
+  --tabbar-h: 0px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --stage-h: calc(100svh - var(--topbar-h));
+}
+
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+.sheet-up { animation: sheet-up 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+:root { --topbar-h: 3.5rem; --sidebar-w: 0px; }
+html[data-sidebar="expanded"] { --sidebar-w: 248px; }
+html[data-sidebar="rail"] { --sidebar-w: 72px; }
+@media (max-width: 767px) { :root { --tabbar-h: 64px; } }
+html[data-focus] { --tabbar-h: 0px; }
+.app-column { padding-left: var(--sidebar-w); transition: padding-left 0.2s ease-out; }
+.skip-link { position: fixed; left: 12px; top: -60px; z-index: 100; padding: 8px 14px; border-radius: 12px; background: var(--surface); color: var(--s900); font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+.skip-link:focus { top: 12px; }
+
+@keyframes race-jitter { 0%, 100% { transform: translate(0, 0); } 25% { transform: translate(6px, -5px); } 50% { transform: translate(-5px, 4px); } 75% { transform: translate(4px, 6px); } }
+.race-jitter { animation: race-jitter 0.5s ease-in-out infinite; }
+
+/* Scroll-aware chrome: on phones the tab bar slides away while scrolling down; the action bar drops into the freed space. */
+.app-tabbar { transition: transform 0.25s ease-out; }
+@media (max-width: 767px) {
+  html[data-chrome="hidden"] .app-tabbar { transform: translateY(100%); }
+  html[data-chrome="hidden"] { --tabbar-h: 0px; }
+}
+.action-bar { transition: bottom 0.25s ease-out; }
+.topbar-title { transition: opacity 0.2s; }
+html:not([data-h1="out"]) .topbar-title--muted { opacity: 0.55; }
+
+@keyframes sheet-side { from { transform: translateX(100%); } to { transform: none; } }
+.sheet-side { animation: sheet-side 0.28s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+::view-transition-group(hero-geo) { animation-duration: 0.6s; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }

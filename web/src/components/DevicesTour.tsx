@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Hand, Repeat, Sparkles, Microscope } from 'lucide-react';
 import { FeatureTour, type TourStep } from './watermelon/feature-tour';
@@ -14,21 +13,15 @@ const STEPS: TourStep[] = [
   { id: 'nerds', title: 'Curious what happened?', description: 'Stats for nerds shows every request and database check behind the scenes.', icon: <Microscope size={40} /> },
 ];
 
-/** First-visit tour plus a "Take the tour" button. */
-export function DevicesTour() {
-  const [open, setOpen] = useState(() => !seen());
-  const close = () => { remember(); setOpen(false); };
-  return (
-    <>
-      <button onClick={() => setOpen(true)} className="text-sm font-semibold text-stone-500 underline-offset-4 hover:text-stone-800 hover:underline">
-        Take the tour
-      </button>
-      {open && createPortal(
-        <div className="fixed inset-0 z-[65] grid place-items-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm">
-          <FeatureTour steps={STEPS} onClose={close} closeOnBackdrop />
-        </div>,
-        document.body,
-      )}
-    </>
+export const tourSeen = seen;
+
+/** Controlled tour overlay (portal). The page decides when it opens; closing remembers it. */
+export function DevicesTour({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[65] grid place-items-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm">
+      <FeatureTour steps={STEPS} onClose={() => { remember(); onClose(); }} closeOnBackdrop />
+    </div>,
+    document.body,
   );
 }

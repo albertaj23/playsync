@@ -3,7 +3,7 @@
 
 import { recordTrace, summarize } from './trace';
 
-export type StrategyName = 'NAIVE' | 'TXN_RR' | 'SERIALIZABLE' | 'PESSIMISTIC' | 'OPTIMISTIC' | 'CONSTRAINT';
+export type StrategyName = 'NAIVE' | 'TXN_RR' | 'SERIALIZABLE' | 'PESSIMISTIC' | 'OPTIMISTIC' | 'CONSTRAINT' | 'TRIGGER' | 'REDIS_LEASE';
 export type Policy = 'REJECT' | 'TAKEOVER' | 'ASK';
 
 export interface ApiResult<T> { ok: boolean; status: number; body: T }
@@ -33,6 +33,7 @@ export const api = {
   get: <T>(path: string) => call<T>('GET', path),
   post: <T>(path: string, body?: unknown) => call<T>('POST', path, body ?? {}),
   put: <T>(path: string, body: unknown) => call<T>('PUT', path, body),
+  patch: <T>(path: string, body: unknown) => call<T>('PATCH', path, body),
 };
 
 export interface Health { ok: boolean; db?: { version: string; name: string; defaultIsolation: string; now: string }; error?: string }
@@ -154,3 +155,11 @@ export interface LockSnapshot { locks: LockRow[]; waits: WaitRow[]; cycle: boole
 
 export interface InvariantBreach { accountId: number; maxStreams: number; active: number }
 export interface InvariantResult { breaches: InvariantBreach[]; violations: number }
+
+export interface IndexVariant {
+  variant: 'WITH_INDEX' | 'WITHOUT_COMPOSITE' | 'WITHOUT_ANY_INDEX';
+  explain: { key: string | null; type: string | null; rows: number | null; extra: string | null };
+  explainAnalyze: string; countMs: number; locksHeld: number; recordLocks: number; tableLocks: number;
+  otherAccountBlocked: boolean; otherAccountMs: number;
+}
+export interface IndexExperimentResult { historyRows: number; accountsTouched: number; variants: IndexVariant[]; finding: string }

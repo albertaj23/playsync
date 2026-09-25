@@ -6,6 +6,8 @@ import { naive } from './naive.js';
 import { optimistic } from './optimistic.js';
 import { pessimistic } from './pessimistic.js';
 import { serializable } from './serializable.js';
+import { redisLease } from './redisLease.js';
+import { trigger } from './trigger.js';
 import { txnRr } from './txnRr.js';
 import type { ClaimInput, ClaimResult, Strategy, StrategyName } from './types.js';
 
@@ -16,6 +18,8 @@ export const strategies: Record<StrategyName, Strategy> = {
   PESSIMISTIC: pessimistic,
   OPTIMISTIC: optimistic,
   CONSTRAINT: constraint,
+  TRIGGER: trigger,
+  REDIS_LEASE: redisLease,
 };
 
 /** The original outcome of an earlier claim with the same (device, clientRequestId), if any. */

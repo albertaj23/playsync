@@ -3,9 +3,10 @@ import { config } from '../config.js';
 import { appPool } from '../db/pool.js';
 import { newStats, withTx } from '../db/tx.js';
 import { writeEvent } from '../strategies/common.js';
-import { setUniqueIndex } from '../strategies/constraint.js';
+import { prepareForStrategy } from '../strategies/artifacts.js';
 import { executeClaim, strategies, type ClaimResult, type StrategyName } from '../strategies/index.js';
 import type { ClaimMode, Holder } from '../strategies/types.js';
+import { extendSlot, freeAllSlots, freeSlots } from '../db/redis.js';
 import { isOnline } from '../realtime/presence.js';
 import { publish } from '../realtime/publisher.js';
 import { bumpVersion, readSnapshot, type Snapshot } from './accountState.js';
@@ -62,7 +63,7 @@ export async function setLiveStrategy(name: StrategyName): Promise<void> {
           `${name} only supports max_streams = 1; lower it first for: ${rows.map((r) => r.username).join(', ')}`);
       }
     }
-    await setUniqueIndex(conn, strategy.needsUniqueIndex);
+    await prepareForStrategy(conn, name);
   });
   liveStrategy = name;
   publish().strategyChanged();
@@ -200,17 +201,18 @@ async function lostReason(conn: PoolConnection, sessionId: number, deviceId: num
  * comes back (the "zombie laptop waking from sleep" case). No version bump: a heartbeat does
  * not change the active set.
  */
-export async function heartbeat(sessionId: number, deviceId: number, positionMs: number) {
+export async function heartbeat(sessionId: number, deviceId: number, positionMs: number, leaseMs: number = config.LEASE_MS) {
   return withConn(async (conn) => {
     const [res] = await conn.query<ResultSetHeader>(
       `UPDATE playback_session
        SET lease_expires_at = NOW(3) + INTERVAL (? * 1000) MICROSECOND, position_ms = ?
        WHERE session_id = ? AND device_id = ? AND status = 'PLAYING' AND lease_expires_at > NOW(3)`,
-      [config.LEASE_MS, positionMs, sessionId, deviceId]);
+      [leaseMs, positionMs, sessionId, deviceId]);
     if (res.affectedRows === 1) {
       const [rows] = await conn.query<RowDataPacket[]>(
         `SELECT account_id, TIMESTAMPDIFF(MICROSECOND, NOW(3), lease_expires_at) DIV 1000 AS ms
          FROM playback_session WHERE session_id = ?`, [sessionId]);
+      await extendSlot(rows[0]!.account_id, deviceId, leaseMs);   // REDIS_LEASE only; no-op otherwise
       // No version bump, but watchers' lease countdowns and positions are refreshed.
       publish().accountChanged(rows[0]!.account_id);
       return { leaseRemainingMs: Number(rows[0]!.ms) };
@@ -260,6 +262,7 @@ async function endOrPause(sessionId: number, deviceId: number, kind: 'PAUSED' | 
         detail: positionMs === undefined ? undefined : { positionMs } });
       return { accountId, sessionId, stateVersion };
     });
+    await freeSlots(accountId, [deviceId]);   // REDIS_LEASE only; no-op otherwise
     publish().accountChanged(accountId);
     return result;
   });
@@ -295,6 +298,7 @@ export async function endAll(accountId: number) {
     }
     return { ended: rows.length, stateVersion };
   }));
+  await freeAllSlots(accountId);
   if (result.ended > 0) {
     publish().accountChanged(accountId);
     for (const e of ended) publish().sessionLost(e.deviceId, { sessionId: e.sessionId, reason: 'ENDED' });

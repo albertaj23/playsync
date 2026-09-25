@@ -1,5 +1,7 @@
 # PlaySync: project status handoff (for planning in another chat)
 
+> **Status update (2026-09-25): historical snapshot** written mid-Phase 5. Everything in its roadmap has since been built (Phase 5, the Simulation Control Room, Phase 6, Phase 7, the UI redesign and the navigation/story UI); see `CLAUDE.md` section 2 and `README.md` section 14 for the current state. The reaper bug in section 4 was fixed (the reaper skips `step_a`/`step_b`).
+
 Generated 2026-09-24. Repo: `/Users/solstice/Desktop/dbms/playsync`. Current branch: `phase-5` (uncommitted work in progress). Original spec: `docs/PLAN.md`. Agent guide: `CLAUDE.md`. Phase plans: `docs/implementation/phase-4.md`, `docs/implementation/phases-5-7.md`.
 
 ## 1. What the project is

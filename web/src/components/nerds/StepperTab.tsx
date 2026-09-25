@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   api, type ErrorBody, type InvariantResult, type LockSnapshot, type StepperScenario,
   type StepperStateView, type StepperUpdate, type StepResultView, type TxnLabel, type TxnView,
@@ -108,6 +109,8 @@ function WaitForGraph({ waits, cycle }: { waits: LockSnapshot['waits']; cycle: b
 }
 
 export function StepperTab() {
+  const [urlParams] = useSearchParams();
+  const wanted = urlParams.get('scenario');
   const [scenarios, setScenarios] = useState<StepperScenario[]>([]);
   const [selectedId, setSelectedId] = useState<string>('');
   const [state, setState] = useState<StepperStateView | null>(null);
@@ -119,7 +122,7 @@ export function StepperTab() {
 
   useEffect(() => {
     api.get<StepperScenario[]>('/lab/stepper/scenarios').then((r) => {
-      if (r.ok) { setScenarios(r.body); setSelectedId((id) => id || r.body[0]?.id || ''); }
+      if (r.ok) { setScenarios(r.body); setSelectedId((id) => id || (wanted && r.body.some((x) => x.id === wanted) ? wanted : r.body[0]?.id) || ''); }
     });
   }, []);
 

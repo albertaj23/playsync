@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { useDeviceSession } from '../../lib/useDeviceSession';
+import { ChevronDown, Pause, Play } from 'lucide-react';
+import { useDeviceSession, type DeviceMessage } from '../../lib/useDeviceSession';
 import type { Song } from '../../lib/api';
 import { Button, Dot } from '../ui';
 import { NowPlaying } from './NowPlaying';
@@ -27,12 +28,21 @@ export function DeviceCard({
   songs,
   heartbeatMs,
   large,
+  compact,
+  expanded,
+  onToggle,
+  onEvent,
 }: {
   accountId: number;
   device: { deviceId: number; deviceName: string; deviceType: string };
   songs: Song[];
   heartbeatMs: number;
   large?: boolean;
+  /** Compact cards show one primary button; `expanded` reveals the full controls. Always stays mounted (heartbeats). */
+  compact?: boolean;
+  expanded?: boolean;
+  onToggle?: () => void;
+  onEvent?: (m: DeviceMessage) => void;
 }) {
   const session = useDeviceSession({ accountId, deviceId: device.deviceId, songs, heartbeatMs });
   const cardRef = useRef<HTMLElement>(null);
@@ -58,6 +68,10 @@ export function DeviceCard({
   }, [stateKey, borderColor]);
 
   const avatarRef = useRef<HTMLDivElement>(null);
+  const full = !compact || !!expanded;
+  const onEventRef = useRef(onEvent);
+  onEventRef.current = onEvent;
+  useEffect(() => { if (session.message) onEventRef.current?.(session.message); }, [session.message]);
   const mood: AvatarMood = session.offline ? 'offline'
     : session.message?.kind === 'moved' ? 'moved'
     : session.busy ? 'waiting'
@@ -126,6 +140,17 @@ export function DeviceCard({
           </div>
         )}
 
+        {!full && (
+          <div className="space-y-3">
+            <p className="truncate text-sm text-stone-600">{(session.playingSong ?? songs.find((x) => x.songId === session.songId))?.title ?? 'Nothing playing'}</p>
+            <Button className="w-full" variant={session.phase === 'playing' ? 'secondary' : 'play'} disabled={session.busy || session.offline}
+              onClick={session.phase === 'playing' ? session.pause : session.play}>
+              {session.phase === 'playing' ? <><Pause size={16} /> Pause</> : <><Play size={16} fill="currentColor" /> {session.phase === 'paused' ? 'Resume' : 'Play'}</>}
+            </Button>
+          </div>
+        )}
+        {full && (
+          <>
         <NowPlaying
           songs={songs}
           songId={session.songId}
@@ -149,6 +174,13 @@ export function DeviceCard({
           goOffline={session.goOffline}
           comeOnline={session.comeOnline}
         />
+          </>
+        )}
+        {compact && (
+          <button onClick={onToggle} aria-expanded={full} className="mx-auto flex items-center gap-1 text-xs font-semibold text-stone-500 hover:text-stone-800">
+            {full ? 'Less' : 'More'} <ChevronDown size={14} className={full ? 'rotate-180 transition-transform' : 'transition-transform'} />
+          </button>
+        )}
 
         <AskSheet
           open={session.message?.kind === 'ask'}
@@ -181,7 +213,7 @@ export function DeviceCard({
           );
         })()}
 
-        {session.offline && (
+        {session.offline && full && (
           <div className="rounded-xl border border-sky-500/20 bg-sky-500/8 p-4 text-sm text-sky-400">
             😴 This device is napping (offline). If it stays away too long, or another device takes over, its spot will be let go.
           </div>

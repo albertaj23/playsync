@@ -10,9 +10,10 @@
 
 import type { PoolConnection, RowDataPacket } from 'mysql2/promise';
 import { appPool, labPool } from '../db/pool.js';
+import { flushSlots } from '../db/redis.js';
 import { config } from '../config.js';
 import { newStats, type Isolation } from '../db/tx.js';
-import { setUniqueIndex } from '../strategies/constraint.js';
+import { prepareForStrategy } from '../strategies/artifacts.js';
 import { executeClaim, strategies, type ClaimMode, type StrategyName } from '../strategies/index.js';
 import { checkInvariant } from './invariant.js';
 import { withLabLock } from './labLock.js';
@@ -88,6 +89,7 @@ export async function runRace(p: RaceParams): Promise<RaceResult> {
     await admin.query('DELETE FROM playback_session WHERE account_id IN (SELECT account_id FROM account WHERE is_lab)');
     await admin.query('UPDATE account SET max_streams = ?, state_version = 0 WHERE is_lab', [p.maxStreams]);
   } finally {
+    if (p.strategy === 'REDIS_LEASE') await flushSlots();
     admin.release();
   }
 
@@ -198,7 +200,7 @@ export async function runStreamLimitExperiment(
   return withLabLock(async () => {
     const conn = await appPool.getConnection();
     try {
-      await setUniqueIndex(conn, strategy.needsUniqueIndex);
+      await prepareForStrategy(conn, strategy.name);
     } finally {
       conn.release();
     }
@@ -221,7 +223,7 @@ export async function runStreamLimitExperiment(
     } finally {
       const conn2 = await appPool.getConnection();
       try {
-        await setUniqueIndex(conn2, strategies[restoreIndexFor].needsUniqueIndex);
+        await prepareForStrategy(conn2, restoreIndexFor);
       } finally {
         conn2.release();
       }

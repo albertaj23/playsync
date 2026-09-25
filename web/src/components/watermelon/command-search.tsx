@@ -89,10 +89,15 @@ const DEFAULT_ITEMS: CommandItem[] = [
 interface Props {
   items?: CommandItem[];
   placeholder?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
-export const CommandSearch: FC<Props> = ({ items = DEFAULT_ITEMS, placeholder = 'Find...' }) => {
-  const [isOpen, setIsOpen] = useState(false);
+export const CommandSearch: FC<Props> = ({ items = DEFAULT_ITEMS, placeholder = 'Find...', open, onOpenChange, hideTrigger }) => {
+  const [innerOpen, setInnerOpen] = useState(false);
+  const isOpen = open ?? innerOpen;
+  const setIsOpen = (v: boolean) => { setInnerOpen(v); onOpenChange?.(v); };
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -187,7 +192,7 @@ export const CommandSearch: FC<Props> = ({ items = DEFAULT_ITEMS, placeholder = 
 
       <div className="relative z-50 h-10 w-full max-w-[280px] md:w-64">
         <AnimatePresence mode="popLayout">
-          {!isOpen ? (
+          {!isOpen ? (hideTrigger ? null : (
             <motion.button
               key="trigger"
               layoutId="command-pallete"
@@ -213,7 +218,7 @@ export const CommandSearch: FC<Props> = ({ items = DEFAULT_ITEMS, placeholder = 
                 ⌘K
               </motion.kbd>
             </motion.button>
-          ) : (
+          )) : (
             <motion.div
               layoutId="command-pallete"
               transition={sharedTransition}

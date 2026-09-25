@@ -19,10 +19,12 @@ The two-devices-press-Play race is **write skew / a phantom**, not a lost update
 | 2 | Six strategies, playback service, REST API | ✅ done | `phase-2` |
 | 3 | Real-time sync, lease reaper, friendly UI + Stats for nerds | ✅ done | `phase-3` |
 | 4 | Concurrency Lab: trials, persistence, lost update, bench | ✅ done | `phase-4` |
-| 5 | Transaction Stepper | ✅ built, **uncommitted** pending user approval. Plan: [docs/implementation/phases-5-7.md](docs/implementation/phases-5-7.md) | `phase-5` (current) |
-| 5.5 | Simulation Control Room (`/sim`) | **next** (after Phase 5 is committed). Plan: [docs/implementation/phase-sim.md](docs/implementation/phase-sim.md) | `phase-sim` |
-| 6 | Index lab + report docs | planned (same file) | `phase-6` |
-| 7 | Stretch goals, **only if the user asks** | planned (same file) | — |
+| 5 | Transaction Stepper | ✅ done. Plan: [docs/implementation/phases-5-7.md](docs/implementation/phases-5-7.md) | `phase-5` |
+| UI | Friendly light/dark redesign, mascot, anime.js motion, Watermelon components | ✅ done, committed. [docs/implementation/phase-ui-playful.md](docs/implementation/phase-ui-playful.md), [docs/ui-voice.md](docs/ui-voice.md) | `phase-ui` |
+| 5.5 | Simulation Control Room (`/sim`) | ✅ built (M1–M4), **uncommitted**. Plan: [docs/implementation/phase-sim.md](docs/implementation/phase-sim.md); design: [docs/simulation.md](docs/simulation.md) | `phase-sim` → `phase-nav` |
+| NAV | Sidebar shell, story framework, pages as chapter stories, geometric scenes, neon sliders | ✅ built (N0–N7), **uncommitted**. Plan: [docs/implementation/phase-nav-ux.md](docs/implementation/phase-nav-ux.md) | `phase-nav` (current) |
+| 6 | Index experiment + report docs | ✅ built, **uncommitted**: Stats for nerds → Index tab, [docs/concurrency.md](docs/concurrency.md), [docs/syllabus-map.md](docs/syllabus-map.md), H6 filled in [docs/experiments.md](docs/experiments.md) | `phase-nav` |
+| 7 | Stretch: TRIGGER + REDIS_LEASE strategies, timestamp-ordering simulator, precedence-graph builder (Theory tab) | ✅ built, **uncommitted** | `phase-nav` |
 
 Each branch is cut from the previous phase's branch. Nothing past Phase 1 is merged into `main`; don't merge unless the user asks.
 
@@ -43,7 +45,7 @@ npm -w server run test:fast # server tests, skipping the slow Concurrency Lab te
 npm run bench               # full experiment matrix (~1200 trials, several minutes); --quick, --trials N, --only stream|lost, --no-md
 ```
 
-Baseline at the end of Phase 5: **140 server tests pass (2 skipped by design) + 3 web tests**, typecheck clean, build succeeds. Keep it that way: never finish a step with a red suite.
+Baseline now: **174 server tests pass (2 skipped by design; needs MySQL and Redis containers up) + 43 web tests**. `test:fast` skips the slow `lab`, `sim`, `indexExperiment` and `phase7` files. (End of Phase 5 it was 140 + 3.), typecheck clean, build succeeds. Keep it that way: never finish a step with a red suite.
 
 ## 4. Repository map
 
@@ -88,7 +90,14 @@ web/src/
   components/ui.tsx            Card, Badge, Button, Dot, Equalizer, Stat, Field, inputCls, Code, Segmented, cx. Use these.
   components/device/           DeviceCard, NowPlaying, PlayerControls, deviceMessages (plain-language messages).
   components/nerds/            One file per Stats-for-nerds tab, including LabTab.tsx (full-control lab) and RunsTab.tsx (reads GET /lab/runs; tab id "runs", accepts legacy "stress").
-  pages/                       HomePage, DevicesPage (/devices), DevicePage (/device?account=&device=), StressTestPage (/stress, two experiments), NerdsPage (/nerds?tab=...).
+  pages/                       HomePage, DevicePage (/device), NerdsPage (/nerds?tab=...), StressTestPage (/stress, `?exp=count`), devices/ (the /devices story), stress/ (the two stress stories).
+  components/shell/            AppShell, Sidebar, TopBar, TabBar, MoreSheet, Tooltip, PhonePopover, ScrollChrome (layout vars --topbar-h/--sidebar-w/--tabbar-h in index.css).
+  components/story/ + lib/story/ Story, Chapter (scene | work, gated), StickyStage, ChapterRail, NextHint, ActionBar, auto-advance; scroll bus + pure progress maths (tested).
+  components/geo/              Geometric vocabulary (pieces.tsx), rail glyphs, useGeoScene (paused anime timeline scrubbed by scroll).
+  components/sim/              Simulation page (SimStory), Relay conditions, Stage, feed, timeline, summary, compare, database overlay.
+  components/watermelon/       Vendored: command-search, feature-tour, copy-confirm, adaptive-slider (see its README). `motion` is used ONLY here.
+  lib/theory/                  Precedence graph and timestamp-ordering simulator (pure, tested); lib/motion.ts anime presets (reduced-motion safe).
+  server extras: strategies/trigger.ts, strategies/redisLease.ts, strategies/artifacts.ts (prepareForStrategy: unique index / trigger), db/redis.ts, lab/indexExperiment.ts, lab/sim/*, routes/sim.ts.
 ```
 
 ## 5. Rules the code follows (do not break them)
@@ -115,7 +124,7 @@ web/src/
 ### Frontend: two audiences
 - **Friendly pages** (`/`, `/devices`, `/device`, `/stress`) are for someone who knows nothing about databases. Never show session ids, leases, versions, strategy names, HTTP codes or SQL there. Plain sentences and clear verdicts.
 - **Stats for nerds** (`/nerds?tab=…`) shows everything technical, in monospace. Results of friendly actions are **verified** there (server-side checks), not just displayed.
-- Light theme: stone background, white rounded-2xl cards, violet primary, emerald = playing/success, rose = failure, amber = warning, sky = offline. Reuse `components/ui.tsx`.
+- Light **and** dark themes (toggle in the top bar; tokens in `web/src/index.css`): use `stone-*` (themed), `fg/N` overlays and `violet-*` (= brand coral); emerald = playing/success, rose = failure, amber = warning, sky = offline. Never `bg-white/N`, `text-white` or Tailwind `zinc-*` in our own files. Reuse `components/ui.tsx`. Full rules: `docs/ui-voice.md`.
 - Every page must work at **375 px wide with no horizontal page scroll**. Wide tables go in an `overflow-auto` wrapper. Grids need `grid-cols-1` at mobile or long content will stretch them.
 - All HTTP goes through `api` from `lib/api.ts`, which traces automatically. Add a `summarize()` case in `lib/trace.ts` for any new state-changing endpoint.
 - Strict TypeScript with `noUncheckedIndexedAccess`. No `any`; use real types or `unknown` plus narrowing.
@@ -153,6 +162,15 @@ web/src/
 
 Record any new deviation you make in this list, and in your phase summary.
 
+28. (UI) The page-entry animation is a CSS keyframe with fill `backwards`: a forwards-filling `transform` animation keeps a containing block alive for `position: fixed` descendants (this misplaced the chapter rail). Overlays also use portals.
+29. (NAV) anime.js `onScroll` was not adopted; a shared scroll bus plus a paused timeline scrubbed with `seek()` is used (supports reverse scrubbing and clean teardown).
+30. (SIM) Simulation M3 was built inside the story chapters; the `phase-sim.md` §5.1 layout and the M4 phone Relay bottom sheet are superseded. `GET /lab/sim/state` also returns `seriesAll`. Household/device names are generated on the server; BURST arrival repeats as a wave every 6 s. Isolation is passed to TXN_RR only (passing it to the others silently weakened SERIALIZABLE).
+31. (NAV) Watermelon Dock/FluidTabs (and the unused DialogStack/Feedback) were deleted; the shell no longer uses them. All range inputs use the vendored, restyled Adaptive Slider.
+32. `experiment_run.source` gained `SIM` (schema change: `npm run db:reset`, or `ALTER TABLE experiment_run MODIFY source ENUM('UI','API','BENCH','TEST','SIM') NOT NULL DEFAULT 'API'`).
+33. (Phase 6) The index experiment is a Stats for nerds tab ("Index"), not a `/index-lab` page. It drops and restores `ix_session_account_status_lease` (and `ix_session_status_lease` for the third setup) under the lab lock and always restores them.
+34. (Phase 7) `TRIGGER` and `REDIS_LEASE` are strategies 7 and 8. The trigger and unique index are managed only through `prepareForStrategy(conn, name)` (`strategies/artifacts.ts`); every call site that used `setUniqueIndex` now uses it. Measured against the plan's hypothesis: the trigger is *mostly* safe, not "racing like NAIVE" (a `SELECT` in a trigger takes locking-read locks); REDIS_LEASE TAKEOVER needs a post-commit reconciliation because Redis admission and MySQL preemption are two stores. Redis runs in docker-compose (port 6380); nothing touches it unless that strategy is used (`redisInUse()` guards the heartbeat/release hooks).
+35. (Phase 7) The Theory tab (precedence graph, basic TO, TO + Thomas write rule) is client-only pure TypeScript; it is a *simulation* (MySQL doesn't use timestamp ordering).
+
 ## 7. How to work here
 
 - **One phase at a time.** Create the phase branch from the current one (`git checkout -b phase-4` from `phase-3`). Follow the phase plan in `docs/implementation/`. At the end: all tests green, typecheck clean, build OK, browser-verified. Then **stop** and report: what you built, the commands to verify it, and any deviations.
@@ -173,6 +191,6 @@ Record any new deviation you make in this list, and in your phase summary.
 - **SERIALIZABLE gets WORSE, not better, when load is spread over more accounts** (16 accounts vs. 1, same total concurrency): in a quick bench run, mean p95 at concurrency 32 went from ~47ms (1 account) to ~359ms (16 accounts), with retries roughly quadrupling. This is a real, reproducible InnoDB effect, not a bug: `SELECT COUNT(*) WHERE account_id = ?` under SERIALIZABLE takes a shared next-key lock on `ix_session_account_status_lease`, and next-key locks extend into the gap toward the *next* distinct key value in the index — so one account's phantom-protection range can abut (and, depending on row distribution, effectively serialize against) a neighboring account's inserts on the same physical index. This is worth citing directly in `docs/concurrency.md` (Phase 6) alongside H6 (index footprint); don't try to "fix" it by changing the query, since demonstrating this exact interaction between locks and index layout is the point.
 
 
-## UI phase (branch `phase-ui`)
+## UI phase (branch `phase-ui`; light/dark replaced deviation 27's dark-only theme)
 
 Friendly light/dark redesign: theme tokens in `web/src/index.css` (`stone-*`, `fg/N`, `violet` = coral brand), Melo mascot (`components/Mascot.tsx`), device avatars, anime.js presets (`lib/motion.ts`, reduced-motion safe), vendored Watermelon components in `components/watermelon/` (see its README; uses `motion`), toasts (`lib/toast.tsx`), theme toggle (`lib/theme.tsx`), routes lazy-loaded. Voice and theme rules: `docs/ui-voice.md`. Plan: `docs/implementation/phase-ui-playful.md`. This supersedes deviation 27's "dark only" redesign. `/sim` should reuse the mascot, `Verdict`, `RaceTrack` and motion presets.

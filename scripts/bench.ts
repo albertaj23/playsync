@@ -5,6 +5,7 @@
 //   npm run bench -- --trials 5      override the trial count
 //   npm run bench -- --only stream   just the stream-limit matrix (or --only lost)
 //   npm run bench -- --no-md         skip updating docs/experiments.md
+//   npm run bench -- --stretch       also run the Phase 7 strategies (TRIGGER, REDIS_LEASE)
 //
 // Runs entirely in-process against the server's lab modules (no HTTP, no running server needed
 // beyond MySQL itself). One batchId tags every row this invocation writes to experiment_run
@@ -26,6 +27,7 @@ import { closePools } from '../server/src/db/pool.js';
 import { LabBusyError } from '../server/src/lab/labLock.js';
 import { runLostUpdateExperiment, type LostUpdateResult, type LostUpdateVariant } from '../server/src/lab/lostUpdate.js';
 import { runStreamLimitExperiment, type RaceResult } from '../server/src/lab/raceRunner.js';
+import { closeRedis } from '../server/src/db/redis.js';
 import { mean, median, round2 } from '../server/src/lab/stats.js';
 import type { Isolation } from '../server/src/db/tx.js';
 import type { StrategyName } from '../server/src/strategies/index.js';
@@ -36,16 +38,17 @@ const EXPERIMENTS_MD = path.join(ROOT, 'docs', 'experiments.md');
 
 // -------------------------------------------------------------- args
 
-interface Args { quick: boolean; trials?: number; only?: 'stream' | 'lost'; noMd: boolean }
+interface Args { quick: boolean; trials?: number; only?: 'stream' | 'lost'; noMd: boolean; stretch: boolean }
 
 function parseArgs(argv: string[]): Args {
-  const a: Args = { quick: false, noMd: false };
+  const a: Args = { quick: false, noMd: false, stretch: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--quick') a.quick = true;
     else if (arg === '--trials') a.trials = Number(argv[++i]);
     else if (arg === '--only') a.only = argv[++i] as 'stream' | 'lost';
     else if (arg === '--no-md') a.noMd = true;
+    else if (arg === '--stretch') a.stretch = true;
     else console.warn(`bench: ignoring unknown argument "${arg}"`);
   }
   return a;
@@ -65,6 +68,11 @@ const STREAM_CELLS: StreamCell[] = [
   { strategy: 'PESSIMISTIC', label: 'PESSIMISTIC' },
   { strategy: 'OPTIMISTIC', label: 'OPTIMISTIC' },
   { strategy: 'CONSTRAINT', label: 'CONSTRAINT' },
+  // Phase 7 stretch strategies (need Redis for REDIS_LEASE): included with --stretch
+  ...(args.stretch ? [
+    { strategy: 'TRIGGER' as const, label: 'TRIGGER' },
+    { strategy: 'REDIS_LEASE' as const, label: 'REDIS_LEASE' },
+  ] : []),
 ];
 
 const concurrencies = args.quick ? [2, 32] : [2, 8, 32, 64];
@@ -183,7 +191,8 @@ async function main() {
   } catch (err) {
     if (err instanceof LabBusyError) {
       console.error('bench: another experiment is running; stop the UI experiment or the tests and retry.');
-      await closePools();
+      await closeRedis();
+  await closePools();
       process.exit(2);
     }
     throw err;
@@ -210,6 +219,7 @@ async function main() {
     console.log(`updated ${path.relative(ROOT, EXPERIMENTS_MD)}`);
   }
 
+  await closeRedis();
   await closePools();
   console.log(`bench done: batch ${batchId}`);
 }
@@ -337,6 +347,7 @@ function updateExperimentsMd(args_: {
 
 main().catch(async (err) => {
   console.error(err);
+  await closeRedis();
   await closePools();
   process.exit(1);
 });

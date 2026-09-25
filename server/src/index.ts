@@ -4,6 +4,8 @@ import { config } from './config.js';
 import { closePools } from './db/pool.js';
 import { attachSocket } from './realtime/socket.js';
 import { engine as stepperEngine } from './lab/stepper/engine.js';
+import { closeRedis } from './db/redis.js';
+import { simEngine } from './lab/sim/engine.js';
 import { startReaper } from './services/leaseReaper.js';
 import { setLiveStrategy } from './services/playback.js';
 
@@ -23,7 +25,9 @@ async function shutdown() {
   stopReaper();
   io.close();
   server.close();
+  await simEngine.closeAll();
   await stepperEngine.closeAll();
+  await closeRedis();
   await closePools();
   process.exit(0);
 }

@@ -100,7 +100,7 @@ CREATE TABLE experiment_run (
   wall_ms         DECIMAL(10,2) NOT NULL DEFAULT 0,
   batch_id        CHAR(36)      NULL,      -- groups the trials of one "Run"/"Compare all"/bench invocation
   trial           SMALLINT UNSIGNED NOT NULL DEFAULT 1,
-  source          ENUM('UI','API','BENCH','TEST') NOT NULL DEFAULT 'API',
+  source          ENUM('UI','API','BENCH','TEST','SIM') NOT NULL DEFAULT 'API',
   detail          JSON          NULL,      -- errorSamples, lost-update finalCount, etc.
   created_at      DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   INDEX ix_run_batch (batch_id),

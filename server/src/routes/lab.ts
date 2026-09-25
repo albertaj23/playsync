@@ -4,6 +4,7 @@ import { ISOLATIONS, type Isolation } from '../db/tx.js';
 import { LabBusyError } from '../lab/labLock.js';
 import { LOST_UPDATE_VARIANTS, LostUpdateParamError, runLostUpdateExperiment } from '../lab/lostUpdate.js';
 import { listRuns } from '../lab/persist.js';
+import { runIndexExperiment } from '../lab/indexExperiment.js';
 import { RaceParamError, runStreamLimitExperiment } from '../lab/raceRunner.js';
 import { getLiveStrategy, ServiceError } from '../services/playback.js';
 import { STRATEGY_NAMES } from '../strategies/index.js';
@@ -102,4 +103,8 @@ const RunsQuery = z.object({
 labRouter.get('/lab/runs', asyncHandler(async (req, res) => {
   const q = RunsQuery.parse(req.query);
   res.json(await listRuns(q));
+}));
+
+labRouter.post('/lab/index-experiment', asyncHandler(async (_req, res) => {
+  try { res.json(await runIndexExperiment()); } catch (err) { mapLabError(err); }
 }));

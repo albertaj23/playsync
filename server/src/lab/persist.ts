@@ -5,7 +5,7 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import { appPool } from '../db/pool.js';
 
-export type RunSource = 'UI' | 'API' | 'BENCH' | 'TEST';
+export type RunSource = 'UI' | 'API' | 'BENCH' | 'TEST' | 'SIM';
 export type RunExperiment = 'STREAM_LIMIT' | 'LOST_UPDATE';
 export type RunMode = 'NORMAL' | 'TAKEOVER';
 

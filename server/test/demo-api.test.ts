@@ -15,7 +15,7 @@ describe('read-only endpoints for the UI', () => {
   it('GET /config, /songs, /strategies', async () => {
     expect((await request(app).get('/api/config')).body).toMatchObject({ leaseMs: expect.any(Number), heartbeatMs: expect.any(Number) });
     expect((await request(app).get('/api/songs')).body).toHaveLength(12);
-    expect((await request(app).get('/api/strategies')).body).toHaveLength(6);
+    expect((await request(app).get('/api/strategies')).body).toHaveLength(8);
   });
 
   it('GET /accounts/lookup resolves a username', async () => {

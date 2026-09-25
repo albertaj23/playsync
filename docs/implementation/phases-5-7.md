@@ -1,5 +1,7 @@
 # Phases 5–7: implementation plans
 
+> **Status update (2026-09-25): all three phases are built.** Deviations: the Index experiment is a Stats-for-nerds tab named "Index" (not "Index lab"); `concurrency.md`, `syllabus-map.md` and the H6 result in `experiments.md` exist; Phase 7 built all four items (TRIGGER, REDIS_LEASE as strategies 7 and 8, the timestamp-ordering simulator and the precedence-graph builder in the Theory tab). Measured results contradict the plan's TRIGGER hypothesis (it is mostly safe, not "still races like NAIVE"); see `docs/experiments.md` and `CLAUDE.md` deviation 34.
+
 Read `CLAUDE.md` first. Finish and report Phase 4 before starting here. Each phase gets its own branch cut from the previous one, and **stops for review** at the end. Phase 5 is specified in the most detail, because it is the most delicate. Phases 6 and 7 are specified to the level needed to start; refine them into a step list like `phase-4.md` before coding.
 
 ---

@@ -16,6 +16,42 @@ import { bumpVersion } from './accountState.js';
 
 export interface ReapResult { accountId: number; expired: { sessionId: number; deviceId: number }[]; stateVersion: number }
 
+/**
+ * Expires one account's lapsed sessions (own transaction, global lock order) and publishes after
+ * COMMIT. Exported so the simulator can sweep only its own accounts while the global reaper keeps
+ * skipping lab accounts.
+ */
+export async function reapAccount(accountId: number): Promise<ReapResult | null> {
+  const conn = await appPool.getConnection();
+  try {
+    const r = await withTx(conn, 'READ COMMITTED', async () => {
+      await conn.query('SELECT account_id FROM account WHERE account_id = ? FOR UPDATE', [accountId]);
+      const [rows] = await conn.query<RowDataPacket[]>(
+        `SELECT session_id, device_id FROM playback_session
+         WHERE account_id = ? AND status = 'PLAYING' AND lease_expires_at <= NOW(3) FOR UPDATE`, [accountId]);
+      if (rows.length === 0) return null;   // someone else (a claim, another reaper pass) got there first
+      await conn.query(
+        `UPDATE playback_session SET status = 'EXPIRED', ended_at = lease_expires_at WHERE session_id IN (?)`,
+        [rows.map((x) => x.session_id)]);
+      const stateVersion = await bumpVersion(conn, accountId);
+      const expired = rows.map((x) => ({ sessionId: Number(x.session_id), deviceId: x.device_id as number }));
+      for (const e of expired) {
+        await writeEvent(conn, { accountId, deviceId: e.deviceId, sessionId: e.sessionId, type: 'EXPIRED', stateVersion });
+      }
+      return { accountId, expired, stateVersion };
+    });
+    if (!r) return null;
+    publish().accountChanged(accountId);
+    for (const e of r.expired) publish().sessionLost(e.deviceId, { sessionId: e.sessionId, reason: 'EXPIRED' });
+    return r;
+  } catch (err) {
+    console.error(`reaper: account ${accountId} failed`, err);
+    return null;
+  } finally {
+    conn.release();
+  }
+}
+
 /** One pass over all accounts with lapsed leases. Returns what was expired (for tests and logs). */
 export async function reapOnce(): Promise<ReapResult[]> {
   // 1. Which accounts have lapsed PLAYING sessions? Uses ix_session_status_lease.
@@ -26,35 +62,8 @@ export async function reapOnce(): Promise<ReapResult[]> {
 
   const results: ReapResult[] = [];
   for (const { account_id: accountId } of accounts) {
-    const conn = await appPool.getConnection();
-    try {
-      // 2. One READ COMMITTED transaction per account, in global lock order: account → session → event.
-      const r = await withTx(conn, 'READ COMMITTED', async () => {
-        await conn.query('SELECT account_id FROM account WHERE account_id = ? FOR UPDATE', [accountId]);
-        const [rows] = await conn.query<RowDataPacket[]>(
-          `SELECT session_id, device_id FROM playback_session
-           WHERE account_id = ? AND status = 'PLAYING' AND lease_expires_at <= NOW(3) FOR UPDATE`, [accountId]);
-        if (rows.length === 0) return null;   // someone else (a claim, another reaper pass) got there first
-        await conn.query(
-          `UPDATE playback_session SET status = 'EXPIRED', ended_at = lease_expires_at WHERE session_id IN (?)`,
-          [rows.map((x) => x.session_id)]);
-        const stateVersion = await bumpVersion(conn, accountId);
-        const expired = rows.map((x) => ({ sessionId: Number(x.session_id), deviceId: x.device_id as number }));
-        for (const e of expired) {
-          await writeEvent(conn, { accountId, deviceId: e.deviceId, sessionId: e.sessionId, type: 'EXPIRED', stateVersion });
-        }
-        return { accountId, expired, stateVersion };
-      });
-      if (!r) continue;
-      results.push(r);
-      // 3. After COMMIT: push the snapshot and tell each device its session is gone.
-      publish().accountChanged(accountId);
-      for (const e of r.expired) publish().sessionLost(e.deviceId, { sessionId: e.sessionId, reason: 'EXPIRED' });
-    } catch (err) {
-      console.error(`reaper: account ${accountId} failed`, err);
-    } finally {
-      conn.release();
-    }
+    const r = await reapAccount(accountId);
+    if (r) results.push(r);
   }
   return results;
 }

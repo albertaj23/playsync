@@ -3,7 +3,7 @@ import type { Isolation, Stats } from '../db/tx.js';
 
 export type { Isolation, Stats };
 
-export const STRATEGY_NAMES = ['NAIVE', 'TXN_RR', 'SERIALIZABLE', 'PESSIMISTIC', 'OPTIMISTIC', 'CONSTRAINT'] as const;
+export const STRATEGY_NAMES = ['NAIVE', 'TXN_RR', 'SERIALIZABLE', 'PESSIMISTIC', 'OPTIMISTIC', 'CONSTRAINT', 'TRIGGER', 'REDIS_LEASE'] as const;
 export type StrategyName = (typeof STRATEGY_NAMES)[number];
 
 export type ClaimMode = 'NORMAL' | 'TAKEOVER';
@@ -15,6 +15,7 @@ export interface ClaimInput {
   positionMs?: number;                  // where the new session starts (resume after pause)
   isolation?: Isolation;                // lab only: override the strategy's default isolation
   raceDelayMs?: number;                 // lab only: sleep between check and write
+  leaseMs?: number;                     // lab/sim only: lease length for the new session (default LEASE_MS)
   fault?: 'AFTER_SESSION_INSERT';       // recovery demo: throw before commit
 }
 

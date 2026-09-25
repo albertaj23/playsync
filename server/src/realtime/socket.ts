@@ -4,6 +4,8 @@ import { Server, type Socket } from 'socket.io';
 import { z } from 'zod';
 import { appPool } from '../db/pool.js';
 import { setStepperEmitter } from '../lab/stepper/emitter.js';
+import { setSimEmitter } from '../lab/sim/emitter.js';
+import { simEngine } from '../lab/sim/engine.js';
 import { getSnapshot } from '../services/playback.js';
 import { deviceConnected, deviceDisconnected } from './presence.js';
 import { setPublisher, type Publisher } from './publisher.js';
@@ -40,6 +42,10 @@ export function attachSocket(server: http.Server): Server {
   };
   setPublisher(publisher);
   setStepperEmitter((update) => { io.to('stepper').emit('stepper_update', update); });
+  setSimEmitter({
+    tick: (t) => { io.to('sim').emit('sim_tick', t); },
+    done: (s) => { io.to('sim').emit('sim_done', s); },
+  });
 
   io.on('connection', (socket: Socket) => {
     let joined: { accountId: number; deviceId?: number } | null = null;
@@ -47,6 +53,11 @@ export function attachSocket(server: http.Server): Server {
     socket.on('join_stepper', async (_raw: unknown, ack?: (res: object) => void) => {
       await socket.join('stepper');
       ack?.({ ok: true });
+    });
+
+    socket.on('join_sim', async (_raw: unknown, ack?: (res: object) => void) => {
+      await socket.join('sim');
+      ack?.({ ok: true, snapshot: simEngine.snapshot() });
     });
 
     socket.on('join', async (raw: unknown, ack?: (res: object) => void) => {

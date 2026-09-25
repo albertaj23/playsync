@@ -1,5 +1,7 @@
 # PlaySync — Phase 5.5: Simulation Control Room
 
+> **Status update (2026-09-25): built (M1–M4).** Presentation deviates: the `/sim` layout became a six-chapter story (see `docs/implementation/phase-nav-ux.md` §8.3), and the phone Relay bottom sheet was dropped. Design, metrics and limits: `docs/simulation.md`.
+
 Plan for Claude Code. Save as `docs/implementation/phase-sim.md` and read it together with `CLAUDE.md`, `docs/PLAN.md`, `docs/implementation/phase-4.md` and `docs/implementation/phases-5-7.md`.
 
 ## 0. Goal in one paragraph

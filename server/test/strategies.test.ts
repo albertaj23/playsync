@@ -4,7 +4,8 @@ import type { PoolConnection } from 'mysql2/promise';
 import { appPool, closePools, labPool } from '../src/db/pool.js';
 import { newStats } from '../src/db/tx.js';
 import { checkInvariant } from '../src/lab/invariant.js';
-import { setUniqueIndex } from '../src/strategies/constraint.js';
+import { prepareForStrategy } from '../src/strategies/artifacts.js';
+import { closeRedis, flushSlots } from '../src/db/redis.js';
 import { executeClaim, strategies, STRATEGY_NAMES, type ClaimInput, type ClaimResult, type Strategy } from '../src/strategies/index.js';
 import { FaultInjectedError } from '../src/strategies/types.js';
 import { count, deviceIds, firstSongId, resetAccount, sessionRow, stateVersion } from './helpers.js';
@@ -21,8 +22,9 @@ beforeAll(async () => {
 
 afterAll(async () => {
   const conn = await appPool.getConnection();
-  await setUniqueIndex(conn, false).finally(() => conn.release());
+  await prepareForStrategy(conn, 'PESSIMISTIC').finally(() => conn.release());
   await resetAccount(LAB);
+  await closeRedis();
   await closePools();
 });
 
@@ -66,9 +68,9 @@ const UNSAFE = ['NAIVE', 'TXN_RR'] as const;
 describe.each(STRATEGY_NAMES.map((n) => [n, strategies[n]] as const))('%s', (_name, s) => {
   beforeAll(async () => {
     const conn = await appPool.getConnection();
-    await setUniqueIndex(conn, s.needsUniqueIndex).finally(() => conn.release());
+    await prepareForStrategy(conn, s.name).finally(() => conn.release());
   });
-  beforeEach(async () => { acct = await resetAccount(LAB, 1); });
+  beforeEach(async () => { acct = await resetAccount(LAB, 1); if (s.name === 'REDIS_LEASE') await flushSlots(); });
 
   it('grants the first claim and rejects a second device, naming the holder', async () => {
     const a = await claimOnce(s, 0);
@@ -143,7 +145,7 @@ describe('concurrent claims on one account (20 devices, 20 ms race window)', () 
 
   it.each(SAFE)('%s never violates the invariant', async (name) => {
     const conn = await appPool.getConnection();
-    await setUniqueIndex(conn, strategies[name].needsUniqueIndex).finally(() => conn.release());
+    await prepareForStrategy(conn, name).finally(() => conn.release());
     for (let trial = 0; trial < 3; trial++) {
       acct = await resetAccount(LAB, 1);
       const r = await race(strategies[name], 20, { raceDelayMs: 20 });
@@ -154,7 +156,7 @@ describe('concurrent claims on one account (20 devices, 20 ms race window)', () 
 
   it.each(SAFE)('%s keeps the invariant in TAKEOVER mode', async (name) => {
     const conn = await appPool.getConnection();
-    await setUniqueIndex(conn, strategies[name].needsUniqueIndex).finally(() => conn.release());
+    await prepareForStrategy(conn, name).finally(() => conn.release());
     const r = await race(strategies[name], 20, { raceDelayMs: 20, mode: 'TAKEOVER' });
     expect(r.violations).toBe(0);
     expect(r.granted).toBeGreaterThanOrEqual(1);
@@ -162,7 +164,7 @@ describe('concurrent claims on one account (20 devices, 20 ms race window)', () 
 
   it.each(UNSAFE)('%s violates the invariant in at least one of 5 trials', async (name) => {
     const conn = await appPool.getConnection();
-    await setUniqueIndex(conn, false).finally(() => conn.release());
+    await prepareForStrategy(conn, 'PESSIMISTIC').finally(() => conn.release());
     let violations = 0;
     for (let trial = 0; trial < 5 && violations === 0; trial++) {
       acct = await resetAccount(LAB, 1);

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import type { Snapshot, StepperUpdate } from './api';
+import type { SimSnapshot, SimSummary, SimTick } from './sim';
 import { recordTrace } from './trace';
 import { VersionedStore } from './versionedStore';
 
@@ -72,6 +73,27 @@ export function useStepperUpdates(onUpdate: (u: StepperUpdate) => void): { conne
     return () => { socket.disconnect(); };
   }, []);
 
+  return { connected };
+}
+
+/** Joins the simulation room; forwards each tick and the final summary. Returns the join-time snapshot via `onSnapshot`. */
+export function useSimSocket(h: {
+  onSnapshot: (s: SimSnapshot) => void; onTick: (t: SimTick) => void; onDone: (s: SimSummary) => void;
+}): { connected: boolean } {
+  const [connected, setConnected] = useState(false);
+  const ref = useRef(h);
+  ref.current = h;
+  useEffect(() => {
+    const socket: Socket = io({ path: '/socket.io', transports: ['websocket'], forceNew: true });
+    socket.on('connect', () => {
+      setConnected(true);
+      socket.emit('join_sim', {}, (res: { snapshot?: SimSnapshot }) => { if (res?.snapshot) ref.current.onSnapshot(res.snapshot); });
+    });
+    socket.on('disconnect', () => setConnected(false));
+    socket.on('sim_tick', (t: SimTick) => ref.current.onTick(t));
+    socket.on('sim_done', (s: SimSummary) => ref.current.onDone(s));
+    return () => { socket.disconnect(); };
+  }, []);
   return { connected };
 }
 

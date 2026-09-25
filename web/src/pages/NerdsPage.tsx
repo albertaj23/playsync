@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api, type ChecksResponse, type ErrorBody, type EventRow } from '../lib/api';
 import { useAccountState } from '../lib/socket';
+import { usePageMeta } from '../lib/shell';
 import { useTrace } from '../lib/trace';
 import { Badge, Dot, cx } from '../components/ui';
 import { AuditTab } from '../components/nerds/AuditTab';
@@ -10,6 +11,8 @@ import { DatabaseTab } from '../components/nerds/DatabaseTab';
 import { LabTab } from '../components/nerds/LabTab';
 import { LiveStateTab } from '../components/nerds/LiveStateTab';
 import { RunsTab } from '../components/nerds/RunsTab';
+import { IndexTab } from '../components/nerds/IndexTab';
+import { TheoryTab } from '../components/nerds/TheoryTab';
 import { StepperTab } from '../components/nerds/StepperTab';
 import { TraceTab } from '../components/nerds/TraceTab';
 
@@ -17,6 +20,8 @@ const TABS = [
   { id: 'checks', label: 'Checks' },
   { id: 'lab', label: 'Lab' },
   { id: 'stepper', label: 'Stepper' },
+  { id: 'index', label: 'Index' },
+  { id: 'theory', label: 'Theory' },
   { id: 'trace', label: 'Action trace' },
   { id: 'live', label: 'Live state' },
   { id: 'audit', label: 'Audit log' },
@@ -30,6 +35,7 @@ export default function NerdsPage() {
   const rawTab = params.get('tab');
   // 'stress' was this tab's id before it was renamed to 'runs' and started reading experiment_run.
   const tab = (TABS.find((t) => t.id === rawTab)?.id ?? (rawTab === 'stress' ? 'runs' : 'checks')) as TabId;
+  usePageMeta({ title: 'Stats for nerds', chapter: TABS.find((t) => t.id === tab)?.label });
   const username = params.get('account') ?? 'brij';
 
   const [accountId, setAccountId] = useState<number | null>(null);
@@ -97,7 +103,7 @@ export default function NerdsPage() {
         </div>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto border-b border-stone-200">
+      <div className="sticky top-[var(--topbar-h)] z-10 -mx-4 flex gap-1 overflow-x-auto border-b border-stone-200 bg-[var(--bg)] px-4 sm:-mx-6 sm:px-6">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -113,6 +119,8 @@ export default function NerdsPage() {
       {tab === 'checks' && <ChecksTab checks={checks} history={history} snapshot={snapshot} onRunNow={refresh} />}
       {tab === 'lab' && <LabTab />}
       {tab === 'stepper' && <StepperTab />}
+      {tab === 'index' && <IndexTab />}
+      {tab === 'theory' && <TheoryTab />}
       {tab === 'trace' && <TraceTab trace={trace} snapshot={snapshot} />}
       {tab === 'live' && <LiveStateTab snapshot={snapshot} connected={connected} />}
       {tab === 'audit' && <AuditTab events={events} />}

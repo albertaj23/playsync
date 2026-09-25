@@ -75,3 +75,29 @@ export function heroText(el: HTMLElement | null) {
     animate(split.words, { opacity: [0, 1], translateY: [18, 0], duration: 600, ease: 'outCubic', delay: stagger(60) });
   } catch { /* text stays as-is */ }
 }
+
+/** Unlock animation for a gated chapter: the folded panel opens and its children rise in. */
+export function unfold(el: HTMLElement | null) {
+  if (reduced() || !el) return;
+  animate(el, { scaleY: [0.96, 1], opacity: [0.4, 1], duration: 520, ease: 'outCubic' });
+  const kids = Array.from(el.children);
+  if (kids.length) animate(kids, { opacity: [0, 1], translateY: [14, 0], duration: 420, ease: 'outCubic', delay: stagger(60, { start: 120 }) });
+}
+
+/** FLIP: animate elements from where they were (`before` rects, keyed by index) to where they are now. */
+export function morphDots(els: HTMLElement[], before: DOMRect[]) {
+  if (reduced()) return;
+  els.forEach((el, i) => {
+    const b = before[i];
+    if (!b) return;
+    const a = el.getBoundingClientRect();
+    animate(el, { translateX: [b.left - a.left, 0], translateY: [b.top - a.top, 0], duration: 700, ease: 'outExpo' });
+  });
+}
+
+/** Gentle idle loop (scale 1 -> 1.02). Returns a stop function. */
+export function breathe(el: Element | null): () => void {
+  if (reduced() || !el) return () => undefined;
+  const a = animate(el, { scale: [1, 1.02, 1], duration: 3200, loop: true, ease: 'inOutSine' });
+  return () => a.revert();
+}

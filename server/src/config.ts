@@ -7,7 +7,7 @@ import { z } from 'zod';
 const rootEnv = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../.env');
 dotenv.config({ path: rootEnv });
 
-const STRATEGIES = ['NAIVE', 'TXN_RR', 'SERIALIZABLE', 'PESSIMISTIC', 'OPTIMISTIC', 'CONSTRAINT'] as const;
+const STRATEGIES = ['NAIVE', 'TXN_RR', 'SERIALIZABLE', 'PESSIMISTIC', 'OPTIMISTIC', 'CONSTRAINT', 'TRIGGER', 'REDIS_LEASE'] as const;
 
 const EnvSchema = z.object({
   DB_HOST: z.string().default('127.0.0.1'),
@@ -21,6 +21,7 @@ const EnvSchema = z.object({
   REAPER_MS: z.coerce.number().int().positive().default(2_000),
   DEFAULT_STRATEGY: z.enum(STRATEGIES).default('PESSIMISTIC'),
   APP_POOL_SIZE: z.coerce.number().int().positive().default(20),
+  REDIS_URL: z.string().default('redis://127.0.0.1:6380'),
   LAB_POOL_SIZE: z.coerce.number().int().positive().default(120),
 });
 

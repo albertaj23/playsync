@@ -175,7 +175,7 @@ export async function insertSession(conn: PoolConnection, input: ClaimInput, str
   const [res] = await conn.query<ResultSetHeader>(
     `INSERT INTO playback_session (account_id, device_id, song_id, status, position_ms, lease_expires_at, strategy)
      VALUES (?, ?, ?, 'PLAYING', ?, NOW(3) + INTERVAL (? * 1000) MICROSECOND, ?)`,
-    [input.accountId, input.deviceId, input.songId, input.positionMs ?? 0, config.LEASE_MS, strategy],
+    [input.accountId, input.deviceId, input.songId, input.positionMs ?? 0, input.leaseMs ?? config.LEASE_MS, strategy],
   );
   return res.insertId;
 }

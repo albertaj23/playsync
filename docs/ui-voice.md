@@ -14,3 +14,13 @@ Stats for nerds stays technical and calm: monospace, precise terms, no playful c
 
 Motion rules (see `web/src/lib/motion.ts`): anime.js for anything we author, `motion` only inside vendored Watermelon components, never both on one element; every preset is a no-op under prefers-reduced-motion; content is visible by default (animations only add motion).
 Theme rules: use `stone-*`, `fg/N` overlays and `violet-*` (= brand coral) so both themes work; never `bg-white/N`, `text-white` or Tailwind `zinc-*` in our own files (Watermelon files keep their own `dark:` variants).
+
+
+## Chapters and stories (phase-nav-ux)
+
+- Chapter titles are questions or invitations, sentence case, max 5 words. Captions are max 2 sentences.
+- Gated placeholders say what unlocks them ("Run the stampede to see what happens ↑"). NextHint reads "Next: <title> ↓". The auto-advance toast reads "Jumped to your result · Back to <chapter>".
+- Sidebar groups: Listen, Experiment, Under the hood. Tab bar labels: Home, Devices, Stress, Simulation, More.
+- Scroll never drives the user: native scroll always wins; every scrubbed step is also reachable by button and keyboard (Alt+Up/Down, rail, Next). Controls never live inside a scrubbed scene.
+- Motion decision: our own scroll bus + a paused anime timeline (`seek`) is used, not `onScroll` (CLAUDE.md deviation 29). The route wrapper animates with a CSS keyframe (fill `backwards`), never anime.js, so it cannot leave a transform behind.
+- Sliders: the Watermelon Adaptive Slider, restyled (cyan → violet → coral fill, glowing orb thumb, animated digits).

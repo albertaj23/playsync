@@ -2,6 +2,7 @@
 export const ER_DUP_ENTRY = 1062;          // unique-key violation (CONSTRAINT strategy conflict)
 export const ER_LOCK_WAIT_TIMEOUT = 1205;  // innodb_lock_wait_timeout exceeded
 export const ER_LOCK_DEADLOCK = 1213;      // InnoDB picked this txn as the deadlock victim
+export const ER_SIGNAL = 1644;             // SIGNAL SQLSTATE '45000' raised by the stream-limit trigger
 export const ER_NO_REFERENCED_ROW_2 = 1452; // FK violation: parent row missing
 
 interface MysqlError { errno?: unknown }

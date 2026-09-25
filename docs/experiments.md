@@ -55,7 +55,33 @@ Independent variables: strategy, isolation level, concurrency (2–100), content
 - **H5:** CONSTRAINT has the lowest overhead but can only express `max_streams = 1`.
   **Result: partially confirmed.** At low-to-moderate concurrency and on 16 accounts, CONSTRAINT is cheap (Table C: 24.67 ms at c=2, competitive with PESSIMISTIC). But at high concurrency on a single account it is **not** the cheapest — Table A shows CONSTRAINT at 55.44 ms p95, cheaper than PESSIMISTIC (95.87 ms) and SERIALIZABLE, but pricier than OPTIMISTIC (52.29 ms). Worse, Table C shows CONSTRAINT degrading sharply at c=32/64 on 16 accounts (66.24 ms → 281.99 ms) — nearly SERIALIZABLE-level latency — which lines up with `constraint.ts`'s documented deviation from the global lock order (session before account, unlike every other strategy and the reaper), producing exactly the claim/reaper-style deadlocks + retries the code comments predict. `supportsMaxStreamsAbove1 = false` is enforced by `RaceParamError` in `raceRunner.ts` and the `MAX_STREAMS_UNSUPPORTED` guard in `services/playback.ts`, confirming the `max_streams = 1` limitation empirically (Step 6 test 6 in Phase 4) as well as by inspection.
 - **H6:** Removing the composite index increases the lock footprint and makes independent accounts block each other.
-  **Result: not measured by this bench** — it is the subject of the dedicated index experiment (Phase 6, `lab/indexExperiment.ts`); cross-reference `docs/concurrency.md` once written. This bench does, however, surface a closely related phenomenon worth citing there: SERIALIZABLE's p95 latency is **worse with 16 accounts than with 1** (Table C: 364.7 ms at c=32, vs. Table B's 120.38 ms at c=32 on a single account) — the opposite of what spreading load "should" do. This is consistent with next-key locking on the shared composite index `ix_session_account_status_lease` extending a lock's gap toward a neighboring account's key range (see `CLAUDE.md` §8), i.e. the same index-and-locking interaction H6 is about, observed from the strategy side rather than the index side.
+  **Result: confirmed by the dedicated index experiment** (Stats for nerds → Index; `server/src/lab/indexExperiment.ts`; see "Index experiment" below). With `ix_session_account_status_lease`, one account's expire `UPDATE` holds 5 InnoDB locks and an unrelated account's identical `UPDATE` runs freely; without it the same `UPDATE` holds about 20,600 locks and the other account's `UPDATE` times out. This bench also surfaces the closely related phenomenon: SERIALIZABLE's p95 latency is **worse with 16 accounts than with 1** (Table C: 364.7 ms at c=32, vs. Table B's 120.38 ms at c=32 on a single account): next-key locking on the shared composite index `ix_session_account_status_lease` extends a lock's gap toward a neighbouring account's key range (see `CLAUDE.md` §8), the same index-and-locking interaction H6 is about, observed from the strategy side rather than the index side.
+
+## Index experiment (H6)
+
+`POST /api/lab/index-experiment` (Stats for nerds → Index). Loads about 20,500 historical ENDED sessions plus one lapsed PLAYING session per lab account (removed afterwards), then for three index setups shows `EXPLAIN` / `EXPLAIN ANALYZE` of the active-count query, runs the CONSTRAINT strategy's expire `UPDATE` for one account in a REPEATABLE READ transaction, counts the transaction's rows in `performance_schema.data_locks`, and from a second connection (1 s lock-wait timeout) tries the same `UPDATE` for another account. Both indexes are always restored.
+
+| Setup | Plan for the count query | Locks held by one account's `UPDATE` | Another account's `UPDATE` |
+|---|---|---|---|
+| both indexes | covering range scan on `ix_session_account_status_lease` | 5 (4 record + 1 table) | runs freely |
+| without the composite index | range scan on `ix_session_status_lease` | about 20,600 | blocked (1205) |
+| no usable index | full scan (`type = ALL`) | about 20,600 | blocked (1205) |
+
+The count query is fast in every setup; the cost of losing the index is **concurrency**, not speed: InnoDB locks every index record it scans.
+
+## Phase 7 strategies (TRIGGER and REDIS_LEASE)
+
+Measured with the same harness (10 trials, concurrency 64, `max_streams` 1, 20 ms delay; `npm run bench -- --stretch` includes them in the matrix):
+
+| strategy | accounts | % trials violating | mean violations | mean deadlocks | errors | median p95 (ms) | mean throughput (rps) |
+|---|---|---|---|---|---|---|---|
+| TRIGGER | 1 | 10% | 0.1 | 1.6 | 0 | 45.39 | 1138 |
+| TRIGGER | 16 | 70% | 3.4 | 32.5 | 0 | 74.26 | 838 |
+| REDIS_LEASE | 1 | 0% | 0 | 0 | 0 | 11.96 | 2389 |
+| REDIS_LEASE | 16 | 0% | 0 | 0 | 0 | 29.15 | 2177 |
+
+- **TRIGGER** was predicted to race because the trigger's `SELECT` "is a non-locking read". Measured, that is only half right: a `SELECT` inside a trigger runs with the locking semantics of the invoking `INSERT`, so the second insert **waits** on the first's uncommitted row and then rejects correctly. The residual window is the instant before either row exists (no gap locks at READ COMMITTED). Result: mostly safe, not guaranteed, with deadlocks; worse when spread over many accounts.
+- **REDIS_LEASE** never violates (an atomic Lua script hands out `max_streams` slot keys with a TTL equal to the lease) and is the fastest strategy in every cell. TAKEOVER exposed the two-store problem: before reconciliation a stolen slot's victim had no MySQL session yet, giving a mean of 48 excess sessions of 50; the strategy now trims excess after committing and shows 0 violations. A single Redis node is not partition-tolerant as a lock service, so a Redis outage makes claims fail closed.
 
 ## Threats to validity
 
