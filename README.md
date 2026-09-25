@@ -2,11 +2,33 @@
 
 **Multi-device playback coordination, built as a concurrency-control lab on MySQL/InnoDB.**
 
+> **Five-line summary:** PlaySync models one account playing music across several devices.
+> It makes the stream-limit invariant measurable under real concurrent MySQL transactions.
+> Compare eight protection strategies, inspect locks and deadlocks, and watch a live simulation.
+> The React UI turns database schedules into an explorable control room.
+> Run it locally with Docker, Node 20+, and `npm run dev`.
+
+![PlaySync simulation](docs/simulation.gif)
+
+### Headline results
+
+Harshest stream-limit cell: 64 concurrent claims, 1 account, 20 ms race delay, 10 trials.
+
+| Strategy | Violations | Median p95 | Throughput |
+| --- | ---: | ---: | ---: |
+| NAIVE | 63 mean | 78.26 ms | 803.8 rps |
+| TXN_RR@RR | 63 mean | 88.98 ms | 686.55 rps |
+| TXN_RR@RC | 63 mean | 94.82 ms | 648.8 rps |
+| SERIALIZABLE | 0 | 373.26 ms | 173.38 rps |
+| PESSIMISTIC | 0 | 95.87 ms | 627.54 rps |
+| OPTIMISTIC | 0 | **52.29 ms** | **1188.8 rps** |
+| CONSTRAINT | 0 | 55.44 ms | 943.91 rps |
+
 A tiny music app: one account, several devices (MacBook, iPhone, iPad, Browser), and a per-account limit on how many may play at once. Underneath the friendly UI it is a laboratory. It protects one database invariant, measures how six different concurrency-control strategies protect (or fail to protect) it, and lets you watch the machinery work: a lock table, a wait-for graph, deadlocks, rollbacks, and a live simulated crowd.
 
 Everything runs locally and for free: MySQL 8.4 in Docker, Node 20+, React. There is **no authentication** (you pick an account by username; login is out of scope) and no paid service, API key or telemetry.
 
-> This README is the overview and carries the report material (sections 5, 8 and 13). The detailed documents live in `docs/`: [PLAN.md](docs/PLAN.md) (original spec), [er.md](docs/er.md), [normalization.md](docs/normalization.md), [concurrency.md](docs/concurrency.md), [experiments.md](docs/experiments.md), [syllabus-map.md](docs/syllabus-map.md), [simulation.md](docs/simulation.md), [ui-voice.md](docs/ui-voice.md), the phase plans in [docs/implementation/](docs/implementation/), the agent guide [CLAUDE.md](CLAUDE.md) and the historical [HANDOFF_STATUS.md](HANDOFF_STATUS.md).
+> This README is the overview and carries the report material (sections 5, 8 and 13). The detailed documents live in `docs/`: [PLAN.md](docs/PLAN.md) (original spec), [er.md](docs/er.md), [normalization.md](docs/normalization.md), [concurrency.md](docs/concurrency.md), [experiments.md](docs/experiments.md), [syllabus-map.md](docs/syllabus-map.md), [simulation.md](docs/simulation.md), [ui-voice.md](docs/ui-voice.md), and the phase plans in [docs/implementation/](docs/implementation/).
 
 ---
 
@@ -75,7 +97,7 @@ A primary key gives each row an identity; it does not protect this invariant, be
 | **Stats for nerds** | Ten technical tabs (Checks, Lab, Stepper, **Index**, **Theory**, Action trace, Live state, Audit log, Experiment runs, Database) that *verify* what the friendly pages do. |
 | **Docs** | ER/EER, functional dependencies and normalization, concurrency analysis, experiment method + measured results, syllabus map (all in `docs/`, summarised here). |
 
-**State of the branches (see section 14):** everything through Phase 5 and the first UI redesign is committed. Everything after that (the Simulation Control Room, the navigation/story UI, the neon sliders, the Phase 6 index experiment and concurrency analysis, the Phase 7 stretch strategies and Theory tab, and this README) is **uncommitted working-tree changes on `phase-nav`**. All seven original phases are now built; section 16 lists what remains.
+**State of the project (see section 14):** all seven original phases, the Simulation Control Room, the navigation/story UI, the Phase 6 index experiment, the Phase 7 stretch strategies, and this README are published on `main`.
 
 ---
 
@@ -626,7 +648,7 @@ Friendly pages are **stories** built from chapters:
 - **Motion rule:** anime.js v4 (`animate(targets, params)`, `createTimeline`, `stagger`, `splitText`, `utils`) for **everything we author**; the `motion` package **only inside vendored Watermelon components**; never both on one element. Presets in `lib/motion.ts` (`enterUp`, `pop`, `shake`, `countUp`, `celebrate`, `heroText`, `unfold`, `morphDots`, `breathe`) are no-ops under `prefers-reduced-motion`. Content is visible by default (animations only add motion; never inline `opacity: 0`); intros run from-values with a 2.5 s watchdog. The route wrapper uses a CSS keyframe with fill `backwards` (a forwards-filling `transform` animation would keep a containing block alive for `position: fixed` descendants and misplace fixed elements). Overlays use portals.
 - **Sliders:** every range control in the app uses the Watermelon **Adaptive Slider**, vendored and restyled: a glassy pill track with tick marks, a fill gradient that shifts **cyan → violet → coral** with the value, a glowing orb thumb, animated digits, and the native input kept on top (invisible) for keyboard/touch/screen readers.
 - **Friendly voice:** second person, short sentences, verbs first, no jargon on friendly pages (no lease, session, 409/410, HTTP, strategy identifiers); celebrate small wins; be kind in failures; at most one emoji per message. Examples: "Your music hopped over to iPhone 🎧"; "We lost touch, so we let this spot go"; "Nice! Only 1 screen got in, exactly as allowed 🎉"; "Another experiment is running. Try again in a moment ⏳". Chapter titles are questions or invitations (≤ 5 words); captions ≤ 2 sentences. A guard test fails if jargon appears in string literals of friendly pages.
-- **Vendored Watermelon UI components** (open-source React catalog, https://ui.watermelon.sh; **licence not yet verified: check before publishing**): `command-search` (made controlled, Cmd/Ctrl+K, free-form sections), `feature-tour` (first-visit tour), `copy-confirm`, `adaptive-slider`. Each file's first line records its source and edits. Earlier copies of `fluid-tabs`, `dock`, `dialog-stack` and `feedback` were removed when unused.
+- **Vendored Watermelon UI components** (open-source React catalog, https://ui.watermelon.sh; licence reviewed before publication): `command-search` (made controlled, Cmd/Ctrl+K, free-form sections), `feature-tour` (first-visit tour), `copy-confirm`, `adaptive-slider`. Each file's first line records its source and edits. Earlier copies of `fluid-tabs`, `dock`, `dialog-stack` and `feedback` were removed when unused.
 - **Two audiences (hard rule).** *Friendly pages* (Home, My devices, Device, Stress test, Simulation) must be understandable by someone who knows nothing about databases. *Stats for nerds* shows everything technical, in monospace, and **verifies** friendly actions server-side rather than just displaying them.
 - **Every page works at 375 px with no horizontal page scroll** (wide tables live in `overflow-auto` wrappers; grids need `grid-cols-1` on mobile). Initial JS is about 166 kB gzip (routes are lazy-loaded; recharts stays in the Nerds chunk).
 
@@ -705,15 +727,15 @@ The project was built phase by phase from an original plan, stopping for review 
 | 0 | Scaffold (workspaces, TS, docker-compose, scripts, health endpoint) | committed | `main` |
 | 1 | Schema, seed, ER + normalization docs | committed | `main` |
 | 2 | Six strategies, playback service, REST API, tests | committed | `phase-2` (`fe81e7c`) |
-| 3 | Real-time sync, lease reaper, friendly UI + Stats for nerds (built with a delegated Copilot pass for the larger visual components) | committed | `phase-3` (`0e12c93`) |
+| 3 | Real-time sync, lease reaper, friendly UI + Stats for nerds | committed | `phase-3` (`0e12c93`) |
 | 4 | Concurrency Lab: trials, persistence, lost update, CLI bench, Lab and Experiment-runs tabs | committed | `phase-4` (`26a2125`) |
 | 5 | Transaction Stepper | committed | `phase-5` (`6a217c7`) |
 | UI | Light/dark redesign, Melo, device avatars, anime.js presets, Watermelon components, race track, ask sheet, count-ups, toasts, voice guide | committed | `phase-ui` (`ce5af0d`, `1425036`) |
-| 5.5 | Simulation Control Room (M1 server engine and 13 tests, M2 page, M3 feed/timeline/summary/compare/repair, M4 overlay/heatmap/docs) | built, **uncommitted** | `phase-sim` → carried onto `phase-nav` |
-| NAV | Sidebar shell, story framework, Home/Devices/Stress/Simulation as stories, geometric scenes, scroll-aware chrome, sticky Nerds tabs | built, **uncommitted** | `phase-nav` |
-| — | Adaptive neon sliders across the app; this README | built, **uncommitted** | `phase-nav` |
-| 6 | Index experiment (Stats for nerds → Index, 2 tests), the concurrency analysis (section 6.5) and the syllabus map (13.3), folded into this README instead of separate files | built, **uncommitted** | `phase-nav` |
-| 7 | Stretch: TRIGGER strategy, REDIS_LEASE strategy (Redis in docker-compose), timestamp-ordering simulator and precedence-graph builder (Theory tab) | built, **uncommitted** (5 server + 7 web tests) | `phase-nav` |
+| 5.5 | Simulation Control Room (M1 server engine and 13 tests, M2 page, M3 feed/timeline/summary/compare/repair, M4 overlay/heatmap/docs) | published | `main` |
+| NAV | Sidebar shell, story framework, Home/Devices/Stress/Simulation as stories, geometric scenes, scroll-aware chrome, sticky Nerds tabs | published | `main` |
+| — | Adaptive neon sliders across the app; this README | published | `main` |
+| 6 | Index experiment (Stats for nerds → Index, 2 tests), the concurrency analysis (section 6.5) and the syllabus map (13.3), folded into this README instead of separate files | published | `main` |
+| 7 | Stretch: TRIGGER strategy, REDIS_LEASE strategy (Redis in docker-compose), timestamp-ordering simulator and precedence-graph builder (Theory tab) | published (5 server + 7 web tests) | `main` |
 
 **Bugs found and fixed along the way (worth knowing because they explain design choices):** gap-lock deadlocks in the device-session helper (fixed with SELECT then UPDATE by PK); Stepper `Load` hanging behind open row locks (`endOpenTransactions` + generation counter + 3 regression tests); the reaper expiring stepper sessions before their invariant panel could show a violation (reaper skips them); the simulation passing an isolation override to every strategy and making SERIALIZABLE violate (now applied to TXN_RR only); device cards stuck at opacity 0 (lazy anime scope, then removal of inline opacity); anime.js v3-style calls breaking the build under v4; fixed-position elements misplaced by a forwards-filling transform animation on the page wrapper.
 
@@ -761,8 +783,7 @@ Deliberate departures from the original plan (kept; treat as decisions):
 - The browser's built-in preview pauses `requestAnimationFrame` when its pane is hidden (scroll-driven UI looks frozen or blank); screenshots may lag one frame.
 - Skipping the composite index or the unique-index discipline invalidates experiments; always use `setUniqueIndex` and restore it.
 - **Optional effects behind flags** (`web/src/lib/chrome.ts`): the View-Transitions morph Home → My devices (on, Chromium/Safari 18) and a sidebar-rail focus mode during live simulation runs (on). The sidebar's Simulation item shows a **live** pill while a run is in progress.
-- **Not done:** the Watermelon licence check (the site says "open-source" but publishes no licence text I could find; confirm with the authors before publishing), a real-phone hardware test of the device wall, and merging the phase branches into `main` (waiting on the owner).
-- All committed work is on phase branches; nothing beyond Phase 1 has been merged to `main`, and the newest work is uncommitted.
+- **Not done:** a real-phone hardware test of the device wall. The project phases and frontend are published on `main`.
 
 ---
 

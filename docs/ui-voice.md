@@ -22,5 +22,5 @@ Theme rules: use `stone-*`, `fg/N` overlays and `violet-*` (= brand coral) so bo
 - Gated placeholders say what unlocks them ("Run the stampede to see what happens ↑"). NextHint reads "Next: <title> ↓". The auto-advance toast reads "Jumped to your result · Back to <chapter>".
 - Sidebar groups: Listen, Experiment, Under the hood. Tab bar labels: Home, Devices, Stress, Simulation, More.
 - Scroll never drives the user: native scroll always wins; every scrubbed step is also reachable by button and keyboard (Alt+Up/Down, rail, Next). Controls never live inside a scrubbed scene.
-- Motion decision: our own scroll bus + a paused anime timeline (`seek`) is used, not `onScroll` (CLAUDE.md deviation 29). The route wrapper animates with a CSS keyframe (fill `backwards`), never anime.js, so it cannot leave a transform behind.
+- Motion decision: our own scroll bus + a paused anime timeline (`seek`) is used, not `onScroll`. The route wrapper animates with a CSS keyframe (fill `backwards`), never anime.js, so it cannot leave a transform behind.
 - Sliders: the Watermelon Adaptive Slider, restyled (cyan → violet → coral fill, glowing orb thumb, animated digits).

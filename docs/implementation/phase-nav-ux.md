@@ -1,6 +1,6 @@
 # Phase NAV-UX: modern navigation and sequential, immersive pages
 
-Plan for Claude Code. Read together with `CLAUDE.md`, `docs/ui-voice.md`, `docs/implementation/phase-ui-playful.md` and `docs/implementation/phase-sim.md`. Written 2026-09-24 by Opus 5.5 (restored and annotated with implementation status after the work was done).
+Implementation plan for the navigation and story UI. Read together with `docs/ui-voice.md`, `docs/implementation/phase-ui-playful.md` and `docs/implementation/phase-sim.md`. Written 2026-09-24 and annotated with implementation status after the work was done.
 
 This phase changes **only the web client**: navigation, layout, sequencing, motion and copy. It makes **no server, API, schema or strategy changes**. The one exception is the Simulation M3/M4 work, which is re-laid-out here and keeps its own server scope from `phase-sim.md`.
 
@@ -8,7 +8,7 @@ This phase changes **only the web client**: navigation, layout, sequencing, moti
 
 | Milestone | Scope | Status |
 |---|---|---|
-| N0 | Preflight: route transform (D6), CSS layout variables (D7), Melo intro safety (D8), `lib/keys.ts` | ✅ done (the route wrapper uses fill `backwards`, see CLAUDE.md deviation 28) |
+| N0 | Preflight: route transform (D6), CSS layout variables (D7), Melo intro safety (D8), `lib/keys.ts` | ✅ done (the route wrapper uses fill `backwards`) |
 | N1 | Shell: sidebar (expanded / rail / tablet overlay), top bar, phone tab bar + More sheet, palette at all widths, Cmd/Ctrl+B, skip link, focus-to-h1, scroll memory | ✅ done |
 | N2 | Story framework (`Story`, `Chapter`, `StickyStage`, `ChapterRail`, `NextHint`, `ActionBar`, auto-advance), geo library, `useGeoScene`, Home migrated | ✅ done (`onScroll` prototype skipped by decision: deviation 29) |
 | N3 | My devices as five chapters, compact cards, phone carousel, missions, gate picker | ✅ done |
@@ -116,7 +116,7 @@ Behaviour rules: active chapter = last whose top crossed 40% of the visible area
 
 **Auto-advance (the one sanctioned programmatic scroll):** after Run/Compare/Start the page jumps to the result chapter only if the user has not scrolled, typed or clicked since pressing the button, the result arrived within 10 s, and the target is not already ≥ 50% visible; the toast offers a way back. Pure predicate: `lib/story/autoAdvance.ts` (tested).
 
-**anime.js `onScroll` versus the custom bus:** `onScroll` exists in v4.5, but the shared bus + paused timeline scrubbed with `seek()` was used (works bidirectionally with clean teardown). Recorded in `docs/ui-voice.md` and CLAUDE.md deviation 29.
+**anime.js `onScroll` versus the custom bus:** `onScroll` exists in v4.5, but the shared bus + paused timeline scrubbed with `seek()` was used (works bidirectionally with clean teardown). Recorded in `docs/ui-voice.md`.
 
 ## 6. The geometric system
 

@@ -1,8 +1,8 @@
 # Phases 5–7: implementation plans
 
-> **Status update (2026-09-25): all three phases are built.** Deviations: the Index experiment is a Stats-for-nerds tab named "Index" (not "Index lab"); `concurrency.md`, `syllabus-map.md` and the H6 result in `experiments.md` exist; Phase 7 built all four items (TRIGGER, REDIS_LEASE as strategies 7 and 8, the timestamp-ordering simulator and the precedence-graph builder in the Theory tab). Measured results contradict the plan's TRIGGER hypothesis (it is mostly safe, not "still races like NAIVE"); see `docs/experiments.md` and `CLAUDE.md` deviation 34.
+> **Status update (2026-09-25): all three phases are built.** Deviations: the Index experiment is a Stats-for-nerds tab named "Index" (not "Index lab"); `concurrency.md`, `syllabus-map.md` and the H6 result in `experiments.md` exist; Phase 7 built all four items (TRIGGER, REDIS_LEASE as strategies 7 and 8, the timestamp-ordering simulator and the precedence-graph builder in the Theory tab). Measured results contradict the plan's TRIGGER hypothesis (it is mostly safe, not "still races like NAIVE"); see `docs/experiments.md`.
 
-Read `CLAUDE.md` first. Finish and report Phase 4 before starting here. Each phase gets its own branch cut from the previous one, and **stops for review** at the end. Phase 5 is specified in the most detail, because it is the most delicate. Phases 6 and 7 are specified to the level needed to start; refine them into a step list like `phase-4.md` before coding.
+Read the project README first. Finish and report Phase 4 before starting here. Each phase gets its own branch cut from the previous one, and **stops for review** at the end. Phase 5 is specified in the most detail, because it is the most delicate. Phases 6 and 7 are specified to the level needed to start; refine them into a step list like `phase-4.md` before coding.
 
 ---
 
@@ -150,4 +150,4 @@ Each item is independent. Ask which ones.
 3. **Precedence-graph builder:** the user enters a schedule; report whether it's conflict-serializable, draw the graph (SVG), and give a serial order if one exists (topological sort). Unit-tested.
 4. **`TRIGGER` strategy:** a `BEFORE INSERT` trigger on `playback_session` that counts active sessions and `SIGNAL`s when over the limit. Show in the lab that it **still races**: the trigger's SELECT is a non-locking read, which makes a good "looks safe but isn't" finding. Create and drop the trigger like the unique index (only while that strategy is active).
 
-For each: a tests-first design, a deviation note in `CLAUDE.md`, and a stop for review.
+For each: a tests-first design, a deviation note in the project documentation, and a stop for review.

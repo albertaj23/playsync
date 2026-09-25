@@ -7,7 +7,7 @@
 2. "Compare all" (friendly) and the new Lab tab (nerds) reproduce the expected pattern of PLAN §6.4 from data **read back from the database**.
 3. `npm run bench -- --quick` produces CSV files in `docs/results/` and a summary table in `docs/experiments.md`. The full `npm run bench` works too.
 
-Read `CLAUDE.md` first. Work on branch `phase-4`, created from `phase-3`. Do the steps in order and keep the suite green after each one.
+Read the project README first. Work on branch `phase-4`, created from `phase-3`. Do the steps in order and keep the suite green after each one.
 
 ---
 
@@ -48,7 +48,7 @@ Read `CLAUDE.md` first. Work on branch `phase-4`, created from `phase-3`. Do the
 
 - Edit `db/schema.sql`, then `npm run db:reset`. Data is disposable; the seed rebuilds everything.
 - `docs/normalization.md` §6 (`experiment_run`): FDs unchanged (`run_id →` everything). `batch_id` is **not** a key: many trials share it. Mention that `(batch_id, strategy, trial)` is unique in practice but not declared, because rows are inserted by one writer. Stays BCNF.
-- Add the deviation to `CLAUDE.md` §6.
+- Add the deviation to the project documentation.
 - Run `npm test`: all 105 must still pass.
 
 ## Step 2: cross-process lab lock
@@ -281,13 +281,13 @@ Implement `scripts/bench.ts`. It runs in-process. Import from `../server/src/...
 - **Hypotheses H1–H6** (PLAN §11), each followed by "Result:" and a placeholder that the author fills in from the tables. Don't invent results; the bench tables are the evidence.
 - **Threats to validity:** single machine; Docker; the artificial race window; retry cap 5; results vary run to run (that's why there are 10 trials).
 
-## Step 10: README + CLAUDE.md
+## Step 10: README and documentation
 
 - README:
   - "The web UI" table: `/stress` now has two experiments; the nerds tabs now include **Lab** and **Experiment runs**.
   - "Scripts": `npm run bench` with `--quick`, and `npm -w server run test:fast`.
   - Test section: mention the lab tests and the runtime.
-- `CLAUDE.md`:
+- project documentation:
   - Status: Phase 4 done.
   - Update the repo map: `lab/labLock.ts`, `lab/lostUpdate.ts`, new tabs.
   - Record the deviations: schema columns, the lab lock, the `lost` definition, the "Lab"/"Experiment runs" tabs instead of `/lab`.

@@ -2,7 +2,7 @@
 
 > **Status update (2026-09-25): built (M1–M4).** Presentation deviates: the `/sim` layout became a six-chapter story (see `docs/implementation/phase-nav-ux.md` §8.3), and the phone Relay bottom sheet was dropped. Design, metrics and limits: `docs/simulation.md`.
 
-Plan for Claude Code. Save as `docs/implementation/phase-sim.md` and read it together with `CLAUDE.md`, `docs/PLAN.md`, `docs/implementation/phase-4.md` and `docs/implementation/phases-5-7.md`.
+Save as `docs/implementation/phase-sim.md` and read it together with `docs/PLAN.md`, `docs/implementation/phase-4.md` and `docs/implementation/phases-5-7.md`.
 
 ## 0. Goal in one paragraph
 
@@ -22,8 +22,8 @@ The signature demo moment is:
 1. **Finish the open Phase 5 bug.** The stepper invariant panel shows "holds" because the lease reaper expires `step_a`/`step_b` sessions.
    - Make the reaper skip stepper accounts (option (a) in the handoff).
    - Add a reaper test.
-   - Record the change in `CLAUDE.md` §6.
-2. **Complete the remaining Phase 5 checklist** from the handoff: browser verification, `CLAUDE.md` and `README` updates, and test counts. Commit only when the user asks.
+  - Record the change in the project documentation.
+2. **Complete the remaining Phase 5 checklist**: browser verification, README updates, and test counts. Commit only when the user asks.
 3. **Create branch `phase-sim` from `phase-5`** after the user approves the Phase 5 commit.
 4. **Read before coding, and adapt names to what actually exists. Do not assume the names in this plan.**
    - `server/src/lab/raceRunner.ts`, for the barrier/burst start and the check-to-insert delay parameter.
@@ -43,7 +43,7 @@ The signature demo moment is:
 - **Two-audience rule.** `/sim` is a presenter page.
   - By default it uses friendly language: no ids, HTTP codes, lease timestamps or strategy identifiers.
   - A **"Show the database"** toggle opens a technical overlay where everything technical is allowed.
-  - Record this as a deviation in `CLAUDE.md` §6.
+  - Record this as a deviation in the project documentation.
 - Keep React components under about 200 lines each, split into several files. Long single-file visual components previously tripped the tool classifier.
 - Stop and report at the end of every milestone. Commit only on request, with the usual `Co-Authored-By` trailer.
 
@@ -313,7 +313,7 @@ Write reducer tests for `seq` ordering, diff merging and event batching.
 | M1 | Server engine, invariant, metrics, API, persistence, tests 1–10 | A simulation runs headless via curl and all tests pass 3 times in a row |
 | M2 | Relay + presets + Stage (tiles, meters, over-limit styling) | "Break it" visibly breaks households in the browser |
 | M3 | Feed, Pulse, timeline with switch markers, RunSummary, Compare, Repair button | The full "break it → switch → repair" story works live |
-| M4 | Database overlay, heatmap mode, 375 px, reduced motion, README demo script, `CLAUDE.md` (status, repo map, deviations), new `docs/simulation.md` (design, metrics definitions, happiness rationale, known limits) | The browser checklist passes and typecheck, build and the full test suite are clean |
+| M4 | Database overlay, heatmap mode, 375 px, reduced motion, README demo script, project documentation, new `docs/simulation.md` (design, metrics definitions, happiness rationale, known limits) | The browser checklist passes and typecheck, build and the full test suite are clean |
 
 ## 8. Demo script to add to the README (target 4 minutes on `/sim`)
 

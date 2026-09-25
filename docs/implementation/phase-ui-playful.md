@@ -1,6 +1,6 @@
 # UI Phase: "Friendly listening room" (making PlaySync playful and easy)
 
-Plan for Claude Code. Read `CLAUDE.md` first (especially §5 "Frontend: two audiences" and deviation 27 about the dark redesign). This plan changes look, copy and motion only. **No API, schema or strategy changes.**
+Read the project README first (especially the frontend design section and the dark redesign decision). This plan changes look, copy and motion only. **No API, schema or strategy changes.**
 
 ## 0. Goal
 
@@ -158,7 +158,7 @@ Replace ad-hoc `<p className="text-rose-…">` errors with one `Toast` (built fr
 | U4 | **Device avatars + DeviceCard/Devices/Device** (§5.3), voice rewrite of `deviceMessages.ts`. | handoff, offline and takeover flows still pass the existing browser checklist, avatars react to real state |
 | U5 | **Home + Stress** (§5.2, §5.4), celebrations, count-ups, race track. | verdict numbers match the server, no hidden content in a hidden/background tab |
 | U6 | **Nerds polish + toasts + onboarding** (§5.5-5.7). | all 8 nerd tabs still functional, stepper scenarios still pass |
-| U7 | **QA + docs.** Update README screenshots/demo script, `CLAUDE.md` (new deviations, repo map, theme rules), remove the `stone` remap if unused. | full checklist in §7 passes |
+| U7 | **QA + docs.** Update README screenshots/demo script and project documentation, remove the `stone` remap if unused. | full checklist in §7 passes |
 
 Each step lists the exact files it touches in its report. Sequence matters: U1 before anything visual, U2 before U3-U6.
 

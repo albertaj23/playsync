@@ -1,6 +1,6 @@
 # PlaySync — Multi-Device Playback Coordination as a Concurrency-Control Lab
 
-Implementation plan for Claude Code. Read this whole file before writing any code. Build phase by phase and **stop after each phase** with a short summary, the commands to verify it, and anything that deviated from this plan.
+Implementation plan for PlaySync. Read this whole file before writing any code. Build phase by phase and **stop after each phase** with a short summary, the commands to verify it, and anything that deviated from this plan.
 
 Everything here is free and local: MySQL Community (Docker), Node.js, React, open-source npm packages. **No paid APIs, no cloud services, no API keys.**
 
